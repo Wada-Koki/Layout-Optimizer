@@ -30,6 +30,59 @@ with col1:
     min_aisle_mm = st.number_input("3) ブース間隔 min_aisle_mm", min_value=0, step=100, value=1000)
 with col2:
     front_clear_mm = st.number_input("4) 正面スペース front_clear_mm", min_value=0, step=100, value=0)
+    
+# ── 追加: requirements / weights のUI ─────────────────────────
+with st.expander("詳細設定（requirements / weights）", expanded=False):
+    st.subheader("requirements")
+    r1, r2 = st.columns(2)
+    with r1:
+        curtain_rail_mode = st.selectbox(
+            "curtain_rail_mode", ["if_wanted", "all", "none"], index=0,
+            help="カーテン希望: if_wanted=希望ブースのみ必須 / all=全ブース必須 / none=無視"
+        )
+        front_clear_mode = st.selectbox("front_clear_mode", ["hard", "soft"], index=0)
+        wall_contact_prefer = st.checkbox("wall_contact_prefer", True)
+        wall_contact_default_hard = st.checkbox("wall_contact_default_hard", True)
+        wall_contact_hard = st.checkbox("wall_contact_hard", False)
+    with r2:
+        inner_walls_count_as_wall_contact = st.checkbox("inner_walls_count_as_wall_contact", True)
+        enforce_outer_wall_band = st.checkbox("enforce_outer_wall_band", False)
+        outlet_demand_hard_radius_mm = st.number_input("outlet_demand_hard_radius_mm [mm]", 0, 1_000_000, 0, step=100)
+        outlet_reserve_radius_mm = st.number_input("outlet_reserve_radius_mm [mm]", 0, 1_000_000, 0, step=100)
+
+    st.subheader("weights")
+    w1, w2 = st.columns(2)
+    with w1:
+        compactness = st.number_input("compactness", 0.0, 1_000_000.0, 3000.0, step=100.0)
+        wall_contact_bonus = st.number_input("wall_contact_bonus", 0.0, 1_000_000.0, 500.0, step=50.0)
+        curtain_rail_match = st.number_input("curtain_rail_match", 0.0, 1_000_000.0, 1.0, step=0.1)
+    with w2:
+        outlet_distance = st.number_input("outlet_distance", 0.0, 1_000_000.0, 1.0, step=0.1)
+        outlet_repel_non_wanter = st.number_input("outlet_repel_non_wanter", 0.0, 1_000_000.0, 0.0, step=0.1)
+        preferred_area_bonus = st.number_input("preferred_area_bonus", 0.0, 1_000_000.0, 1000.0, step=10.0)
+
+    # 実行時に使う辞書（グローバルにせず、この下の if run_btn: で参照）
+    req_ui = {
+        "curtain_rail_mode": curtain_rail_mode,
+        "wall_contact_prefer": bool(wall_contact_prefer),
+        "wall_contact_default_hard": bool(wall_contact_default_hard),
+        "wall_contact_hard": bool(wall_contact_hard),
+        "inner_walls_count_as_wall_contact": bool(inner_walls_count_as_wall_contact),
+        "enforce_outer_wall_band": bool(enforce_outer_wall_band),
+        "front_clear_mm": int(front_clear_mm),  # 既存入力も反映
+        "front_clear_mode": front_clear_mode,
+        "outlet_demand_hard_radius_mm": int(outlet_demand_hard_radius_mm),
+        "outlet_reserve_radius_mm": int(outlet_reserve_radius_mm),
+    }
+    weights_ui = {
+        "compactness": float(compactness),
+        "wall_contact_bonus": float(wall_contact_bonus),
+        "outlet_distance": float(outlet_distance),
+        "curtain_rail_match": float(curtain_rail_match),
+        "outlet_repel_non_wanter": float(outlet_repel_non_wanter),
+        "preferred_area_bonus": float(preferred_area_bonus),
+    }
+# ─────────────────────────────────────────────────────────────
 
 run_btn = st.button("▶ 変換→最適化を実行", type="primary", use_container_width=True)
 
@@ -152,14 +205,40 @@ if run_btn:
         # 変換ログがあれば併せて表示
         st.stop()
 
-    # 上書き（必要なキーが無ければ作る）
+        # 上書き（必要なキーが無ければ作る）
     if "room" not in cfg: cfg["room"] = {}
     if "requirements" not in cfg: cfg["requirements"] = {}
     cfg["room"]["min_aisle_mm"] = int(min_aisle_mm)
     cfg["requirements"]["front_clear_mm"] = int(front_clear_mm)
-    # front_clear_mode は既存値を尊重（無ければ hard にする等はお好みで）
+    # front_clear_mode は既存値を尊重（無ければ hard）
     if "front_clear_mode" not in cfg["requirements"]:
         cfg["requirements"]["front_clear_mode"] = "hard"
+
+    # >>> PATCH(2): UI の requirements / weights を反映（あれば）
+    #   ※ req_ui / weights_ui は Inputs 側の expander で作った辞書を想定
+    #   ※ もし別スコープなら st.session_state["req_ui"] 等から拾ってください
+    try:
+        if "req_ui" in locals() and isinstance(req_ui, dict):
+            cfg.setdefault("requirements", {}).update(req_ui)
+        elif hasattr(st, "session_state") and isinstance(st.session_state.get("req_ui"), dict):
+            cfg.setdefault("requirements", {}).update(st.session_state["req_ui"])
+    except Exception:
+        pass
+
+    try:
+        if "weights_ui" in locals() and isinstance(weights_ui, dict):
+            cfg.setdefault("weights", {}).update(weights_ui)
+        elif hasattr(st, "session_state") and isinstance(st.session_state.get("weights_ui"), dict):
+            cfg.setdefault("weights", {}).update(st.session_state["weights_ui"])
+    except Exception:
+        pass
+
+    # レール未定義なら安全側にフォールバック（解なし予防）
+    rails = cfg.get("infrastructure", {}).get("curtain_rails", [])
+    if not rails and cfg["requirements"].get("curtain_rail_mode") not in ("none", None):
+        cfg["requirements"]["curtain_rail_mode"] = "none"
+    # <<< PATCH(2) ここまで
+
     _write_json(cfg_path, cfg)
 
     # 注意喚起（単位倍率）
