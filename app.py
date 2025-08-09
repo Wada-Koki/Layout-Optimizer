@@ -7,6 +7,11 @@
 import streamlit as st
 from pathlib import Path
 import tempfile, shutil, subprocess, datetime, json, re, io, os
+from PIL import Image  # 画像ファイルを使う場合だけ
+
+# 例1: 画像ファイルをファビコンに
+icon = Image.open("favicon.png")  # リポジトリ内のパス
+st.set_page_config(page_title="Layout Optimizer", page_icon=icon)
 
 APP_DIR = Path(__file__).parent.resolve()
 
