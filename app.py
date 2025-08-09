@@ -10,6 +10,10 @@ import tempfile, shutil, subprocess, datetime, json, re, io, os
 
 APP_DIR = Path(__file__).parent.resolve()
 
+# 結果の永続化（ダウンロードでの再実行対策）
+if "result" not in st.session_state:
+    st.session_state.result = None
+
 # 進捗ラベル用の小さなCSSスピナー
 st.markdown("""
 <style>
@@ -199,6 +203,7 @@ def _parse_status(text: str) -> str:
 if run_btn:
     # ▼ ここで1回だけ出す（最初は非表示）
     pb_start("準備中…")
+    st.session_state.result = None  # 前回の表示をクリア
 
     if not booths_file or not hall_file:
         st.error("booths.csv と 会場レイアウト（SVG または config.json）の両方を指定してください。")
@@ -359,34 +364,47 @@ if run_btn:
     # 成果物の取り出し
     layout_svg_path = run_dir / "layout.svg"
     placement_csv_path = run_dir / "placement.csv"
+    
+    # ★★★ 追加：結果を session_state に保存（テキスト/バイト両方）
+    res = {
+        "status": status_line,
+        "svg_text": layout_svg_path.read_text(encoding="utf-8") if layout_svg_path.exists() else None,
+        "svg_bytes": layout_svg_path.read_bytes() if layout_svg_path.exists() else None,
+        "csv_bytes": placement_csv_path.read_bytes() if placement_csv_path.exists() else None,
+        "run_dir": str(run_dir),
+    }
+    st.session_state.result = res
 
+# === 共通: 結果の描画（ダウンロードでの再実行でも毎回出す） ===
+res = st.session_state.result
+if res:
     cols = st.columns(2)
     with cols[0]:
-        if layout_svg_path.exists():
-            st.subheader("layout.svg プレビュー")
-            try:
-                svg_text = layout_svg_path.read_text(encoding="utf-8")
-                _embed_svg(svg_text)
-            except Exception:
-                st.info("SVG の埋め込み表示に失敗しました。ダウンロードからご確認ください。")
+        st.subheader("layout.svg プレビュー")
+        if res["svg_text"]:
+            _embed_svg(res["svg_text"])
         else:
-            st.warning("layout.svg が見つかりませんでした。")
+            st.warning("layout.svg がありません。")
 
     with cols[1]:
         st.subheader("ダウンロード")
-        if layout_svg_path.exists():
-            st.download_button("layout.svg をダウンロード", data=layout_svg_path.read_bytes(),
-                               file_name="layout.svg", mime="image/svg+xml", use_container_width=True)
-        if placement_csv_path.exists():
-            st.download_button("placement.csv をダウンロード", data=placement_csv_path.read_bytes(),
-                               file_name="placement.csv", mime="text/csv", use_container_width=True)
+        if res["svg_bytes"]:
+            st.download_button("layout.svg をダウンロード",
+                               data=res["svg_bytes"],
+                               file_name="layout.svg",
+                               mime="image/svg+xml",
+                               use_container_width=True)
+        if res["csv_bytes"]:
+            st.download_button("placement.csv をダウンロード",
+                               data=res["csv_bytes"],
+                               file_name="placement.csv",
+                               mime="text/csv",
+                               use_container_width=True)
 
-    # ログ表示
-    with st.expander("実行ログを表示"):
-        st.code(out2, language="bash")
-        if err2:
-            st.code(err2, language="bash")
-            
-    pb_finish("完了")
+    # （任意）ステータスの再掲など
+    if res.get("status"):
+        st.caption(res["status"])
+        
+pb_finish("完了")
 
-    st.success(f"完了: {run_dir}")
+st.success(f"完了: {run_dir}")
