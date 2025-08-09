@@ -638,7 +638,9 @@ if front_mode == "hard" and front_clear > 0:
 
 # ===== ソルブ =====
 solver = cp_model.CpSolver()
-solver.parameters.max_time_in_seconds = 60
+solver_cfg = config.get("solver", {})
+max_time = float(solver_cfg.get("max_time_in_seconds", 30.0))
+solver.parameters.max_time_in_seconds = max_time
 solver.parameters.num_search_workers = 8
 status = solver.Solve(model)
 if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
