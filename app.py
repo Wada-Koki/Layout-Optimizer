@@ -18,6 +18,25 @@ else:
     # 画像が無い環境でも落ちないようにフォールバック
     st.set_page_config(page_title="Layout Optimizer", page_icon="🧩")
 
+# apple-touch-icon を <head> に追加（ローカルPNGを base64 で埋め込む）
+icon_path = Path(__file__).parent / "apple-touch-icon.png"  # 180x180 推奨
+if icon_path.exists():
+    b64 = base64.b64encode(icon_path.read_bytes()).decode("ascii")
+    components.html(
+        f"""
+        <script>
+        (function() {{
+          var link = document.createElement('link');
+          link.rel = 'apple-touch-icon';
+          link.sizes = '180x180';
+          link.href = 'data:image/png;base64,{b64}';
+          document.head.appendChild(link);
+        }})();
+        </script>
+        """,
+        height=0,
+    )
+
 APP_DIR = Path(__file__).parent.resolve()
 
 # 結果の永続化（ダウンロードでの再実行対策）
