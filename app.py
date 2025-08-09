@@ -81,6 +81,13 @@ with col1:
     booths_file = st.file_uploader("展示希望を選択 (CSV)", type=["csv"])
 with col2:
     hall_file   = st.file_uploader("会場レイアウトを選択 (SVG または JSON)", type=["svg","json"])
+    
+if booths_file:
+    st.session_state.booths_bytes = booths_file.getvalue()
+    st.session_state.booths_name  = booths_file.name
+if hall_file:
+    st.session_state.hall_bytes = hall_file.getvalue()
+    st.session_state.hall_name  = hall_file.name
 
 col1, col2 = st.columns(2)
 with col1:
@@ -220,11 +227,14 @@ def _parse_status(text: str) -> str:
     return "status: (未取得)"
 
 if run_btn:
-    # ▼ ここで1回だけ出す（最初は非表示）
-    pb_start("準備中…")
-    st.session_state.result = None  # 前回の表示をクリア
+    # ▼ まずはセッションから取り出す（アップローダーが None でも利用可能に）
+    booths_bytes = st.session_state.get("booths_bytes")
+    booths_name  = st.session_state.get("booths_name")
+    hall_bytes   = st.session_state.get("hall_bytes")
+    hall_name    = st.session_state.get("hall_name")
 
     if not booths_file or not hall_file:
+        pb_finish("エラーで停止", hide_bar=True)
         st.error("booths.csv と 会場レイアウト（SVG または config.json）の両方を指定してください。")
         st.stop()
 
@@ -236,6 +246,7 @@ if run_btn:
     for script_name in ("svg2config.py", "layout_optimizer.py"):
         src = APP_DIR / script_name
         if not src.exists():
+            pb_finish("エラーで停止", hide_bar=True)
             st.error(f"{script_name} が見つかりません。app.py と同じフォルダに置いてください。")
             st.stop()
         shutil.copy2(src, run_dir / script_name)
@@ -248,6 +259,10 @@ if run_btn:
     hall_suffix = (hall_file.name.split(".")[-1] or "").lower()
     is_svg = hall_suffix == "svg"
     is_json = hall_suffix == "json"
+    
+    # ▼ ここで1回だけ出す（最初は非表示）
+    pb_start("準備中…")
+    st.session_state.result = None  # 前回の表示をクリア
 
     if is_svg:
         layout_svg_in = run_dir / "layout.svg"
@@ -305,6 +320,7 @@ if run_btn:
         cfg_path = run_dir / "config.json"
         cfg = _read_json_with_comments(cfg_path)
     except Exception as e:
+        pb_finish("エラーで停止", hide_bar=True)
         st.error(f"config.json の読み込みに失敗しました: {e}")
         # 変換ログがあれば併せて表示
         st.stop()
@@ -385,6 +401,7 @@ if run_btn:
     # <<< PROGRESS PATCH
 
     if rc2 != 0:
+        pb_finish("エラーで停止", hide_bar=True)
         st.error("最適化スクリプトがエラーで終了しました。ログを確認してください。")
         st.code(err2 or out2, language="bash")
         st.stop()
