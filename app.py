@@ -19,8 +19,11 @@ st.markdown("""
 """)
 
 # ---- ファイル入力 ----
-booths_file = st.file_uploader("1) booths.csv を選択", type=["csv"])
-hall_file   = st.file_uploader("2) 会場レイアウト（SVG または config.json）を選択", type=["svg","json"])
+col1, col2 = st.columns(2)
+with col1:
+    booths_file = st.file_uploader("1) booths.csv を選択", type=["csv"])
+with col2:
+    hall_file   = st.file_uploader("2) 会場レイアウト（SVG または config.json）を選択", type=["svg","json"])
 
 col1, col2 = st.columns(2)
 with col1:
