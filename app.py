@@ -73,6 +73,38 @@ def pb_finish(msg="完了", hide_bar=False):
         P["bar"].progress(100)
     P["active"] = False
 
+class Progress:
+    def __init__(self, zone=None):
+        z = zone or st.container()
+        cols = z.columns([0.08, 0.92])
+        self.spin = cols[0].empty()
+        self.text = cols[1].empty()
+        self.bar_ph = z.empty()
+        self.bar = None
+        self.active = False
+
+    def start(self, msg="準備中…"):
+        self.spin.markdown("<span class='pb-spin'></span>", unsafe_allow_html=True)
+        self.text.markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
+        self.bar = self.bar_ph.progress(0, text=msg)
+        self.active = True
+
+    def update(self, v:int, msg:str):
+        if not self.active:
+            self.start(msg)
+        self.text.markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
+        self.bar.progress(v, text=msg)
+
+    def finish(self, msg="完了", hide_bar=False):
+        if self.active and self.bar is not None:
+            self.bar.progress(100, text=msg)
+        # スピナーだけ消す
+        self.spin.empty()
+        self.text.markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
+        if hide_bar:
+            self.bar_ph.empty()
+        self.active = False
+
 st.markdown("<h1 style='text-align:center;'><span>展示レイアウト</span><span>最適化</span></h1>", unsafe_allow_html=True)
 
 # ---- ファイル入力 ----
@@ -165,19 +197,19 @@ run_btn = st.button("▶ 実行", type="primary", use_container_width=True)
 # 進捗表示専用ゾーン（ここ“だけ”にスピナー＆バーを出す）
 progress_zone = st.container()
 
-# 単一の状態で管理（ここ以外で progress/spinner を作らない）
-if "prog" not in st.session_state:
-    st.session_state.prog = {
-        "zone": progress_zone,
-        "spin_ph": progress_zone.empty(),   # ← ゾーンの子として作る
-        "text_ph": progress_zone.empty(),
-        "bar_ph":  progress_zone.empty(),
-        "bar": None,
-        "active": False
-    }
-else:
-    # rerun のたびに最新のゾーンを参照（列の再構成対策）
-    st.session_state.prog["zone"] = progress_zone
+# # 単一の状態で管理（ここ以外で progress/spinner を作らない）
+# if "prog" not in st.session_state:
+#     st.session_state.prog = {
+#         "zone": progress_zone,
+#         "spin_ph": progress_zone.empty(),   # ← ゾーンの子として作る
+#         "text_ph": progress_zone.empty(),
+#         "bar_ph":  progress_zone.empty(),
+#         "bar": None,
+#         "active": False
+#     }
+# else:
+#     # rerun のたびに最新のゾーンを参照（列の再構成対策）
+#     st.session_state.prog["zone"] = progress_zone
 
 # # >>> PROGRESS PATCH: 初期化（実行直前で）
 # pbar = st.progress(0, text="準備中…")
@@ -239,6 +271,10 @@ if run_btn:
             st.error("booths.csv と 会場レイアウト（SVG または config.json）の両方を指定してください。")
             st.stop()
 
+        prog = Progress(progress_zone)
+        prog.start("準備中…")
+        prog.update(5, "入力を確認中…")
+
         # 作業フォルダ（run_YYYYmmdd_HHMMSS）
         run_dir = APP_DIR / f"run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         run_dir.mkdir(parents=True, exist_ok=True)
@@ -262,7 +298,6 @@ if run_btn:
         is_json = hall_suffix == "json"
         
         # ▼ ここで1回だけ出す（最初は非表示）
-        pb_start("準備中…")
         st.session_state.result = None  # 前回の表示をクリア
 
         if is_svg:
@@ -281,9 +316,6 @@ if run_btn:
                     "circle": {"fill": {"#00a0e9": "outlet"}}
                 }
                 color_map_dst.write_text(json.dumps(default_cmap, ensure_ascii=False, indent=2), encoding="utf-8")
-
-            # 進捗更新（置換ポイント①）
-            pb_update(5, "入力を確認中…")
 
             # 進捗更新（置換ポイント②）
             pb_update(20, "SVG を解析中…")
