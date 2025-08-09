@@ -374,6 +374,10 @@ if run_btn:
         "run_dir": str(run_dir),
     }
     st.session_state.result = res
+    
+    pb_finish("完了")
+
+    st.success(f"完了: {run_dir}")
 
 # === 共通: 結果の描画（ダウンロードでの再実行でも毎回出す） ===
 res = st.session_state.result
@@ -405,6 +409,3 @@ if res:
     if res.get("status"):
         st.caption(res["status"])
         
-pb_finish("完了")
-
-st.success(f"完了: {run_dir}")
