@@ -7,11 +7,16 @@
 import streamlit as st
 from pathlib import Path
 import tempfile, shutil, subprocess, datetime, json, re, io, os
-from PIL import Image  # 画像ファイルを使う場合だけ
+from pathlib import Path
 
-# 例1: 画像ファイルをファビコンに
-icon = Image.open("favicon.png")  # リポジトリ内のパス
-st.set_page_config(page_title="Layout Optimizer", page_icon=icon)
+APP_DIR = Path(__file__).parent  # app.py があるフォルダ
+icon_path = APP_DIR / "favicon.png"  # 例: repo内 static/favicon.png
+
+if icon_path.exists():
+    st.set_page_config(page_title="Layout Optimizer", page_icon=str(icon_path))
+else:
+    # 画像が無い環境でも落ちないようにフォールバック
+    st.set_page_config(page_title="Layout Optimizer", page_icon="🧩")
 
 APP_DIR = Path(__file__).parent.resolve()
 
