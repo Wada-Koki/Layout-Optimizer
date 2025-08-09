@@ -18,6 +18,8 @@ st.markdown("""
 - **出力**：layout.svg（プレビュー可）、placement.csv、status
 """)
 
+backgroundColor = "#F0F0F0"
+
 # ---- ファイル入力 ----
 col1, col2 = st.columns(2)
 with col1:
