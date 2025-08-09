@@ -262,7 +262,7 @@ if run_btn:
     
     # ▼ ここで1回だけ出す（最初は非表示）
     pb_start("準備中…")
-    st.session_state.result = None  # 前回の表示をクリア
+    # st.session_state.result = None  # 前回の表示をクリア
 
     if is_svg:
         layout_svg_in = run_dir / "layout.svg"
