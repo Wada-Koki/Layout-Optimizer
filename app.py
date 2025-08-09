@@ -10,22 +10,15 @@ import tempfile, shutil, subprocess, datetime, json, re, io, os
 
 APP_DIR = Path(__file__).parent.resolve()
 
-st.set_page_config(page_title="展示レイアウト 最適化GUI", layout="wide")
-st.title("展示レイアウト 最適化GUI")
-
-st.markdown("""
-- **入力**：booths.csv、会場レイアウト（SVG **または** 既存の config.json）、ブース間隔[min_aisle_mm]、正面スペース[front_clear_mm]  
-- **出力**：layout.svg（プレビュー可）、placement.csv、status
-""")
-
-backgroundColor = "#999999"
+st.set_page_config(page_title="展示レイアウト最適化", layout="wide")
+st.title("展示レイアウト最適化")
 
 # ---- ファイル入力 ----
 col1, col2 = st.columns(2)
 with col1:
-    booths_file = st.file_uploader("1) booths.csv を選択", type=["csv"])
+    booths_file = st.file_uploader("1) 展示希望(CSV)を選択", type=["csv"])
 with col2:
-    hall_file   = st.file_uploader("2) 会場レイアウト（SVG または config.json）を選択", type=["svg","json"])
+    hall_file   = st.file_uploader("2) 会場レイアウト（SVG または JSON）を選択", type=["svg","json"])
 
 col1, col2 = st.columns(2)
 with col1:
