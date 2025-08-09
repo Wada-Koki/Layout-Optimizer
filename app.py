@@ -31,47 +31,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
     
 # === PATCH2: 進捗ユーティリティ（スピナーとバーを別プレースホルダで管理） ===
-def pb_start(msg="準備中…"):
-    P = st.session_state.prog
-    # 前回の表示をクリア
-    P["spin_ph"].empty(); P["text_ph"].empty(); P["bar_ph"].empty()
-
-    # ★ 横並びの1行（左: スピナー / 右: ラベル）
-    #   P に progress_zone を持っている場合はその中で columns を作る
-    row_cols = (P.get("zone").columns([0.93, 0.07])     # zone がある場合
-                if P.get("zone") else st.columns([0.93, 0.07]))  # 無い場合のフォールバック
-
-    P["text_ph"] = row_cols[0].empty()
-    P["spin_ph"] = row_cols[1].empty()
-
-    # スピナーとラベルを横並びで描画
-    P["spin_ph"].markdown("<span class='pb-spin'></span>", unsafe_allow_html=True)
-    P["text_ph"].markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
-
-    # バーはその下に（縦に並ぶ）
-    P["bar"] = P["bar_ph"].progress(0)
-    P["active"] = True
-
-def pb_update(v:int, msg:str):
-    P = st.session_state.prog
-    if not P["active"]:
-        pb_start(msg); return
-    P["text_ph"].markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
-    P["bar"].progress(v)
-
-def pb_finish(msg="完了", hide_bar=False):
-    P = st.session_state.prog
-    if not P["active"]:
-        return
-    # スピナーだけ確実に消す（バーは残す）
-    P["spin_ph"].empty()
-    # ラベルは“スピナー無し”で描き直し
-    P["text_ph"].markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
-    if hide_bar:
-        P["bar_ph"].empty()
-    else:
-        P["bar"].progress(100)
-    P["active"] = False
 
 class Progress:
     def __init__(self, zone=None):
@@ -260,6 +219,7 @@ def _parse_status(text: str) -> str:
 
 if run_btn:
     try:
+        prog = None
         # ▼ まずはセッションから取り出す（アップローダーが None でも利用可能に）
         booths_bytes = st.session_state.get("booths_bytes")
         booths_name  = st.session_state.get("booths_name") or ""
@@ -267,7 +227,6 @@ if run_btn:
         hall_name    = st.session_state.get("hall_name") or ""
 
         if not booths_bytes or not hall_bytes:
-            pb_finish("エラーで停止", hide_bar=True)
             st.error("booths.csv と 会場レイアウト（SVG または config.json）の両方を指定してください。")
             st.stop()
 
@@ -283,17 +242,17 @@ if run_btn:
         for script_name in ("svg2config.py", "layout_optimizer.py"):
             src = APP_DIR / script_name
             if not src.exists():
-                pb_finish("エラーで停止", hide_bar=True)
+                if prog: prog.finish("エラーで停止", hide_bar=True)
                 st.error(f"{script_name} が見つかりません。app.py と同じフォルダに置いてください。")
                 st.stop()
             shutil.copy2(src, run_dir / script_name)
 
         # 入力ファイルを保存
         booths_path = run_dir / "booths.csv"
-        booths_path.write_bytes(booths_file.getvalue())
+        booths_path.write_bytes(booths_bytes)
 
         # hall: SVG or JSON を受け入れ
-        hall_suffix = (hall_file.name.split(".")[-1] or "").lower()
+        hall_suffix = (hall_name.split(".")[-1] or "").lower()
         is_svg = hall_suffix == "svg"
         is_json = hall_suffix == "json"
         
@@ -302,7 +261,7 @@ if run_btn:
 
         if is_svg:
             layout_svg_in = run_dir / "layout.svg"
-            layout_svg_in.write_bytes(hall_file.getvalue())
+            layout_svg_in.write_bytes(hall_bytes)
             # color_map.json を作業ディレクトリへ
             color_map_src = APP_DIR / "color_map.json"
             color_map_dst = run_dir / "color_map.json"
@@ -318,7 +277,7 @@ if run_btn:
                 color_map_dst.write_text(json.dumps(default_cmap, ensure_ascii=False, indent=2), encoding="utf-8")
 
             # 進捗更新（置換ポイント②）
-            pb_update(20, "SVG を解析中…")
+            prog.update(20, "SVG を解析中…")
 
             # エラー時のみステータス枠を出すためのプレースホルダ
             status_ph = st.empty()
@@ -329,22 +288,22 @@ if run_btn:
                 # ✳ エラー時だけステータスUIを描画
                 with status_ph.status("SVG を config.json に変換中...", expanded=True) as s:
                     s.update(label="変換でエラー", state="error")
-                    pb_finish("エラーで停止", hide_bar=True)
+                    if prog: prog.finish("エラーで停止", hide_bar=True)
                     st.error("svg2config.py の実行に失敗しました。ログを確認してください。")
                     st.code(err or out, language="bash")
                     st.stop()
             # 正常時は何も描画しない（枠ごと非表示）
 
             # 進捗更新（置換ポイント③）
-            pb_update(40, "config.json を読み込み中…")
+            prog.update(40, "config.json を読み込み中…")
 
         else:
             # 既存config.json を採用
             config_json_in = run_dir / "config.json"
-            config_json_in.write_bytes(hall_file.getvalue())
+            config_json_in.write_bytes(hall_bytes)
 
             # 進捗更新（置換ポイント④）
-            pb_update(50, "パラメータを反映中…")
+            prog.update(50, "パラメータを反映中…")
             
 
 
@@ -353,7 +312,7 @@ if run_btn:
             cfg_path = run_dir / "config.json"
             cfg = _read_json_with_comments(cfg_path)
         except Exception as e:
-            pb_finish("エラーで停止", hide_bar=True)
+            if prog: prog.finish("エラーで停止", hide_bar=True)
             st.error(f"config.json の読み込みに失敗しました: {e}")
             # 変換ログがあれば併せて表示
             st.stop()
@@ -421,7 +380,7 @@ if run_btn:
         # _p(80, "最適化を実行中…")
         # <<< PROGRESS PATCH
         
-        pb_update(70, f"最適化を実行中…（最大 {int(max_time_s)} 秒）")
+        prog.update(70, f"最適化を実行中…（最大 {int(max_time_s)} 秒）")
         
         rc2, out2, err2 = _run_py(run_dir / "layout_optimizer.py", run_dir)
         status_line = _parse_status(out2 + "\n" + err2)
@@ -434,7 +393,7 @@ if run_btn:
         # <<< PROGRESS PATCH
 
         if rc2 != 0:
-            pb_finish("エラーで停止", hide_bar=True)
+            if prog: prog.finish("エラーで停止", hide_bar=True)
             st.error("最適化スクリプトがエラーで終了しました。ログを確認してください。")
             st.code(err2 or out2, language="bash")
             st.stop()
@@ -453,13 +412,13 @@ if run_btn:
         }
         st.session_state.result = res
         
-        pb_finish("完了")
-
-        st.success(f"完了: {run_dir}")
+        if prog: prog.finish("完了")
+        st.success(f"完了: {res['run_dir']}")
         
     except Exception as e:
-        pb_finish("エラーで停止", hide_bar=True)
-        st.exception(e)   # ← これで真っ白にならず、原因行が見える
+        if 'prog' in locals() and prog:
+            if prog: prog.finish("エラーで停止", hide_bar=True)
+        st.exception(e)
 
 # === 共通: 結果の描画（ダウンロードでの再実行でも毎回出す） ===
 res = st.session_state.result
