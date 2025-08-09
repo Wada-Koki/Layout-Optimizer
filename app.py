@@ -10,7 +10,7 @@ import tempfile, shutil, subprocess, datetime, json, re, io, os
 from pathlib import Path
 
 APP_DIR = Path(__file__).parent  # app.py があるフォルダ
-icon_path = APP_DIR / "favicon.png"  # 例: repo内 static/favicon.png
+icon_path = APP_DIR / "favicon.ico"  # 例: repo内 static/favicon.png
 
 if icon_path.exists():
     st.set_page_config(page_title="Layout Optimizer", page_icon=str(icon_path))
