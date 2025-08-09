@@ -10,8 +10,7 @@ import tempfile, shutil, subprocess, datetime, json, re, io, os
 
 APP_DIR = Path(__file__).parent.resolve()
 
-st.set_page_config(page_title="展示レイアウト最適化", layout="wide")
-st.title("展示レイアウト最適化")
+st.markdown("<h2 style='text-align:center;'>展示レイアウト最適化</h2>", unsafe_allow_html=True)
 
 # ---- ファイル入力 ----
 col1, col2 = st.columns(2)
