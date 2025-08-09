@@ -16,7 +16,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align:center;'>展示レイアウト最適化</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align:center;'><span>展示レイアウト</span><span>最適化</span></h1>", unsafe_allow_html=True)
 
 # ---- ファイル入力 ----
 col1, col2 = st.columns(2)
@@ -32,18 +32,18 @@ with col2:
     front_clear_mm = st.number_input("展示正面の確保距離[mm] ", min_value=0, step=100, value=0, help="ブース前に空ける通行・鑑賞スペースの距離です。[front_clear_mm]")
     
 # ── 追加: requirements / weights のUI ─────────────────────────
-with st.expander("詳細設定（requirements / weights）", expanded=False):
+with st.expander("高度な設定", expanded=False):
     st.subheader("制約")
     r1, r2 = st.columns(2)
     with r1:
         curtain_rail_mode = st.selectbox(
             "カーテンレールの使い方", ["if_wanted", "all", "none"], index=0,
-            help="カーテン希望: if_wanted=希望ブースのみ必須 / all=全ブース必須 / none=無視 [curtain_rail_mode]"
+            help="カーテン必須ブースの“背面”をレールに密着させるかの方針です。 希望ブースのみ必須（推奨）：if_wanted / 全ブース必須：all / 無視：none [curtain_rail_mode]"
         )
         front_clear_mode = st.selectbox("正面の確保の厳しさ", ["hard", "soft"], index=0, help="正面スペースの確保の優先度を設定します。必須：hard / なるべく：soft [front_clear_mode]")
         wall_contact_prefer = st.checkbox("壁沿い配置を優先", True, help="可能な限りブースを壁にぴったり付けるようにします。[wall_contact_prefer]")
         wall_contact_default_hard = st.checkbox("壁沿いを基本ルールにする", True, help="特に指定がないブースも原則“壁付け”にします（やや厳しめ）。[wall_contact_default_hard]")
-        wall_contact_hard = st.checkbox("壁沿いを絶対条件にする", False, help="満たせないと配置不可になる可能性があります（かなり厳しめ）。[wall_contact_hard]")
+        wall_contact_hard = st.checkbox("壁沿いを厳密に判定する", False, help="ブースを厳格に壁沿いに配置します。満たせないと配置不可になる可能性があります（かなり厳しめ）。[wall_contact_hard]")
     with r2:
         outlet_demand_hard_radius_mm = st.number_input("コンセント必須距離 [mm]", 0, 1_000_000, 0, step=100, help="コンセント希望ブースは、この半径以内にコンセントが必須。[outlet_demand_hard_radius_mm]")
         outlet_reserve_radius_mm = st.number_input("コンセント予約帯 [mm]", 0, 1_000_000, 0, step=100, help="この半径内は希望者を優先配置（非希望者は入りづらく）。[outlet_reserve_radius_mm]")
@@ -59,7 +59,7 @@ with st.expander("詳細設定（requirements / weights）", expanded=False):
     with w2:
         outlet_distance = st.number_input("コンセント接近度合い", 0.0, 1_000_000.0, 1.0, step=0.1, help="大きいほど希望者をコンセント近くへ配置します。[outlet_distance]")
         outlet_repel_non_wanter = st.number_input("非希望者のコンセント距離", 0.0, 1_000_000.0, 0.0, step=0.1, help="大きいほどコンセント不要ブースがコンセント付近を占有しないようにします。[outlet_repel_non_wanter]")
-        preferred_area_bonus = st.number_input("希望エリア配置度合い", 0.0, 1_000_000.0, 1000.0, step=10.0, help="大きいほど希望エリア内に配置しやすくなります。[preferred_area_bonus]")
+        preferred_area_bonus = st.number_input("希望エリア配置度合い", 0.0, 1_000_000.0, 1000.0, step=10.0, help="大きいほどブースを希望エリア内に配置しやすくなります。[preferred_area_bonus]")
 
     # 実行時に使う辞書（グローバルにせず、この下の if run_btn: で参照）
     req_ui = {
@@ -84,7 +84,7 @@ with st.expander("詳細設定（requirements / weights）", expanded=False):
     }
 # ─────────────────────────────────────────────────────────────
 
-run_btn = st.button("▶ 変換→最適化を実行", type="primary", use_container_width=True)
+run_btn = st.button("▶ 実行", type="primary", use_container_width=True)
 
 log_box = st.empty()
 
@@ -242,17 +242,17 @@ if run_btn:
     _write_json(cfg_path, cfg)
 
     # 注意喚起（単位倍率）
-    SCALE_NOTE = ""
-    try:
-        # svg2config が倍率を掛けている可能性があるため軽く注意書き
-        room_w = int(cfg["room"]["width_mm"])
-        room_h = int(cfg["room"]["depth_mm"])
-        SCALE_NOTE = f"（会場 {room_w}×{room_h} mm。※ `svg2config.py` の倍率と booths.csv の単位を一致させてください）"
-    except Exception:
-        pass
+    # SCALE_NOTE = ""
+    # try:
+    #     # svg2config が倍率を掛けている可能性があるため軽く注意書き
+    #     room_w = int(cfg["room"]["width_mm"])
+    #     room_h = int(cfg["room"]["depth_mm"])
+    #     SCALE_NOTE = f"（会場 {room_w}×{room_h} mm。※ `svg2config.py` の倍率と booths.csv の単位を一致させてください）"
+    # except Exception:
+    #     pass
 
     # 最適化の実行
-    st.write("### 最適化を実行中…", SCALE_NOTE)
+    st.write("### 最適化を実行中…")
     rc2, out2, err2 = _run_py(run_dir / "layout_optimizer.py", run_dir)
     status_line = _parse_status(out2 + "\n" + err2)
     st.write(f"**status**: {status_line}")
