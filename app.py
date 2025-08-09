@@ -229,11 +229,11 @@ def _parse_status(text: str) -> str:
 if run_btn:
     # ▼ まずはセッションから取り出す（アップローダーが None でも利用可能に）
     booths_bytes = st.session_state.get("booths_bytes")
-    booths_name  = st.session_state.get("booths_name")
+    booths_name  = st.session_state.get("booths_name") or ""
     hall_bytes   = st.session_state.get("hall_bytes")
-    hall_name    = st.session_state.get("hall_name")
+    hall_name    = st.session_state.get("hall_name") or ""
 
-    if not booths_file or not hall_file:
+    if not booths_bytes or not hall_bytes:
         pb_finish("エラーで停止", hide_bar=True)
         st.error("booths.csv と 会場レイアウト（SVG または config.json）の両方を指定してください。")
         st.stop()
