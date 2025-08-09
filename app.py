@@ -227,202 +227,207 @@ def _parse_status(text: str) -> str:
     return "status: (未取得)"
 
 if run_btn:
-    # ▼ まずはセッションから取り出す（アップローダーが None でも利用可能に）
-    booths_bytes = st.session_state.get("booths_bytes")
-    booths_name  = st.session_state.get("booths_name") or ""
-    hall_bytes   = st.session_state.get("hall_bytes")
-    hall_name    = st.session_state.get("hall_name") or ""
-
-    if not booths_bytes or not hall_bytes:
-        pb_finish("エラーで停止", hide_bar=True)
-        st.error("booths.csv と 会場レイアウト（SVG または config.json）の両方を指定してください。")
-        st.stop()
-
-    # 作業フォルダ（run_YYYYmmdd_HHMMSS）
-    run_dir = APP_DIR / f"run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    run_dir.mkdir(parents=True, exist_ok=True)
-
-    # 必要スクリプトを複製（そのまま使う）
-    for script_name in ("svg2config.py", "layout_optimizer.py"):
-        src = APP_DIR / script_name
-        if not src.exists():
-            pb_finish("エラーで停止", hide_bar=True)
-            st.error(f"{script_name} が見つかりません。app.py と同じフォルダに置いてください。")
-            st.stop()
-        shutil.copy2(src, run_dir / script_name)
-
-    # 入力ファイルを保存
-    booths_path = run_dir / "booths.csv"
-    booths_path.write_bytes(booths_file.getvalue())
-
-    # hall: SVG or JSON を受け入れ
-    hall_suffix = (hall_file.name.split(".")[-1] or "").lower()
-    is_svg = hall_suffix == "svg"
-    is_json = hall_suffix == "json"
-    
-    # ▼ ここで1回だけ出す（最初は非表示）
-    pb_start("準備中…")
-    # st.session_state.result = None  # 前回の表示をクリア
-
-    if is_svg:
-        layout_svg_in = run_dir / "layout.svg"
-        layout_svg_in.write_bytes(hall_file.getvalue())
-        # color_map.json を作業ディレクトリへ
-        color_map_src = APP_DIR / "color_map.json"
-        color_map_dst = run_dir / "color_map.json"
-        if color_map_src.exists():
-            shutil.copy2(color_map_src, color_map_dst)
-        else:
-            # 最低限のデフォルト（必要に応じて調整）
-            default_cmap = {
-                "line": {"stroke": {"#009944": "curtain-rail", "#1d2088": "inner-wall"}},
-                "rect": {"fill": {"#e60012": "no-go"}, "stroke": {"#000000": "room"}},
-                "circle": {"fill": {"#00a0e9": "outlet"}}
-            }
-            color_map_dst.write_text(json.dumps(default_cmap, ensure_ascii=False, indent=2), encoding="utf-8")
-
-        # 進捗更新（置換ポイント①）
-        pb_update(5, "入力を確認中…")
-
-        # 進捗更新（置換ポイント②）
-        pb_update(20, "SVG を解析中…")
-
-        # エラー時のみステータス枠を出すためのプレースホルダ
-        status_ph = st.empty()
-
-        rc, out, err = _run_py(run_dir / "svg2config.py", run_dir)
-
-        if rc != 0:
-            # ✳ エラー時だけステータスUIを描画
-            with status_ph.status("SVG を config.json に変換中...", expanded=True) as s:
-                s.update(label="変換でエラー", state="error")
-                pb_finish("エラーで停止", hide_bar=True)
-                st.error("svg2config.py の実行に失敗しました。ログを確認してください。")
-                st.code(err or out, language="bash")
-                st.stop()
-        # 正常時は何も描画しない（枠ごと非表示）
-
-        # 進捗更新（置換ポイント③）
-        pb_update(40, "config.json を読み込み中…")
-
-    else:
-        # 既存config.json を採用
-        config_json_in = run_dir / "config.json"
-        config_json_in.write_bytes(hall_file.getvalue())
-
-        # 進捗更新（置換ポイント④）
-        pb_update(50, "パラメータを反映中…")
-        
-
-
-    # config.json を開いて min_aisle_mm / front_clear_mm を上書き
     try:
-        cfg_path = run_dir / "config.json"
-        cfg = _read_json_with_comments(cfg_path)
+        # ▼ まずはセッションから取り出す（アップローダーが None でも利用可能に）
+        booths_bytes = st.session_state.get("booths_bytes")
+        booths_name  = st.session_state.get("booths_name") or ""
+        hall_bytes   = st.session_state.get("hall_bytes")
+        hall_name    = st.session_state.get("hall_name") or ""
+
+        if not booths_bytes or not hall_bytes:
+            pb_finish("エラーで停止", hide_bar=True)
+            st.error("booths.csv と 会場レイアウト（SVG または config.json）の両方を指定してください。")
+            st.stop()
+
+        # 作業フォルダ（run_YYYYmmdd_HHMMSS）
+        run_dir = APP_DIR / f"run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+
+        # 必要スクリプトを複製（そのまま使う）
+        for script_name in ("svg2config.py", "layout_optimizer.py"):
+            src = APP_DIR / script_name
+            if not src.exists():
+                pb_finish("エラーで停止", hide_bar=True)
+                st.error(f"{script_name} が見つかりません。app.py と同じフォルダに置いてください。")
+                st.stop()
+            shutil.copy2(src, run_dir / script_name)
+
+        # 入力ファイルを保存
+        booths_path = run_dir / "booths.csv"
+        booths_path.write_bytes(booths_file.getvalue())
+
+        # hall: SVG or JSON を受け入れ
+        hall_suffix = (hall_file.name.split(".")[-1] or "").lower()
+        is_svg = hall_suffix == "svg"
+        is_json = hall_suffix == "json"
+        
+        # ▼ ここで1回だけ出す（最初は非表示）
+        pb_start("準備中…")
+        st.session_state.result = None  # 前回の表示をクリア
+
+        if is_svg:
+            layout_svg_in = run_dir / "layout.svg"
+            layout_svg_in.write_bytes(hall_file.getvalue())
+            # color_map.json を作業ディレクトリへ
+            color_map_src = APP_DIR / "color_map.json"
+            color_map_dst = run_dir / "color_map.json"
+            if color_map_src.exists():
+                shutil.copy2(color_map_src, color_map_dst)
+            else:
+                # 最低限のデフォルト（必要に応じて調整）
+                default_cmap = {
+                    "line": {"stroke": {"#009944": "curtain-rail", "#1d2088": "inner-wall"}},
+                    "rect": {"fill": {"#e60012": "no-go"}, "stroke": {"#000000": "room"}},
+                    "circle": {"fill": {"#00a0e9": "outlet"}}
+                }
+                color_map_dst.write_text(json.dumps(default_cmap, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            # 進捗更新（置換ポイント①）
+            pb_update(5, "入力を確認中…")
+
+            # 進捗更新（置換ポイント②）
+            pb_update(20, "SVG を解析中…")
+
+            # エラー時のみステータス枠を出すためのプレースホルダ
+            status_ph = st.empty()
+
+            rc, out, err = _run_py(run_dir / "svg2config.py", run_dir)
+
+            if rc != 0:
+                # ✳ エラー時だけステータスUIを描画
+                with status_ph.status("SVG を config.json に変換中...", expanded=True) as s:
+                    s.update(label="変換でエラー", state="error")
+                    pb_finish("エラーで停止", hide_bar=True)
+                    st.error("svg2config.py の実行に失敗しました。ログを確認してください。")
+                    st.code(err or out, language="bash")
+                    st.stop()
+            # 正常時は何も描画しない（枠ごと非表示）
+
+            # 進捗更新（置換ポイント③）
+            pb_update(40, "config.json を読み込み中…")
+
+        else:
+            # 既存config.json を採用
+            config_json_in = run_dir / "config.json"
+            config_json_in.write_bytes(hall_file.getvalue())
+
+            # 進捗更新（置換ポイント④）
+            pb_update(50, "パラメータを反映中…")
+            
+
+
+        # config.json を開いて min_aisle_mm / front_clear_mm を上書き
+        try:
+            cfg_path = run_dir / "config.json"
+            cfg = _read_json_with_comments(cfg_path)
+        except Exception as e:
+            pb_finish("エラーで停止", hide_bar=True)
+            st.error(f"config.json の読み込みに失敗しました: {e}")
+            # 変換ログがあれば併せて表示
+            st.stop()
+
+            # 上書き（必要なキーが無ければ作る）
+        if "room" not in cfg: cfg["room"] = {}
+        if "requirements" not in cfg: cfg["requirements"] = {}
+        cfg["room"]["min_aisle_mm"] = int(min_aisle_mm)
+        cfg["requirements"]["front_clear_mm"] = int(front_clear_mm)
+        # front_clear_mode は既存値を尊重（無ければ hard）
+        if "front_clear_mode" not in cfg["requirements"]:
+            cfg["requirements"]["front_clear_mode"] = "hard"
+
+        # >>> PATCH(2): UI の requirements / weights を反映（あれば）
+        #   ※ req_ui / weights_ui は Inputs 側の expander で作った辞書を想定
+        #   ※ もし別スコープなら st.session_state["req_ui"] 等から拾ってください
+        
+        # solver パラメータの反映
+        cfg.setdefault("solver", {})
+        if "solver_ui" in locals() and isinstance(solver_ui, dict):
+            cfg["solver"].update(solver_ui)
+        
+        try:
+            if "req_ui" in locals() and isinstance(req_ui, dict):
+                cfg.setdefault("requirements", {}).update(req_ui)
+            elif hasattr(st, "session_state") and isinstance(st.session_state.get("req_ui"), dict):
+                cfg.setdefault("requirements", {}).update(st.session_state["req_ui"])
+        except Exception:
+            pass
+
+        try:
+            if "weights_ui" in locals() and isinstance(weights_ui, dict):
+                cfg.setdefault("weights", {}).update(weights_ui)
+            elif hasattr(st, "session_state") and isinstance(st.session_state.get("weights_ui"), dict):
+                cfg.setdefault("weights", {}).update(st.session_state["weights_ui"])
+        except Exception:
+            pass
+
+        # レール未定義なら安全側にフォールバック（解なし予防）
+        rails = cfg.get("infrastructure", {}).get("curtain_rails", [])
+        if not rails and cfg["requirements"].get("curtain_rail_mode") not in ("none", None):
+            cfg["requirements"]["curtain_rail_mode"] = "none"
+        # <<< PATCH(2) ここまで
+
+        _write_json(cfg_path, cfg)
+
+        # >>> PROGRESS PATCH
+        # _p(70, "最適化の準備中…")
+        # <<< PROGRESS PATCH
+
+        # 注意喚起（単位倍率）
+        # SCALE_NOTE = ""
+        # try:
+        #     # svg2config が倍率を掛けている可能性があるため軽く注意書き
+        #     room_w = int(cfg["room"]["width_mm"])
+        #     room_h = int(cfg["room"]["depth_mm"])
+        #     SCALE_NOTE = f"（会場 {room_w}×{room_h} mm。※ `svg2config.py` の倍率と booths.csv の単位を一致させてください）"
+        # except Exception:
+        #     pass
+
+        # 最適化の実行
+        # st.write("### 最適化を実行中…")
+        
+        # >>> PROGRESS PATCH
+        # _p(80, "最適化を実行中…")
+        # <<< PROGRESS PATCH
+        
+        pb_update(70, f"最適化を実行中…（最大 {int(max_time_s)} 秒）")
+        
+        rc2, out2, err2 = _run_py(run_dir / "layout_optimizer.py", run_dir)
+        status_line = _parse_status(out2 + "\n" + err2)
+        st.write(f"**status**: {status_line}")
+        
+        # >>> PROGRESS PATCH
+        # _p(100, "完了")
+        # 進捗バーを消したい場合は：
+        # pbar.empty()
+        # <<< PROGRESS PATCH
+
+        if rc2 != 0:
+            pb_finish("エラーで停止", hide_bar=True)
+            st.error("最適化スクリプトがエラーで終了しました。ログを確認してください。")
+            st.code(err2 or out2, language="bash")
+            st.stop()
+
+        # 成果物の取り出し
+        layout_svg_path = run_dir / "layout.svg"
+        placement_csv_path = run_dir / "placement.csv"
+        
+        # ★★★ 追加：結果を session_state に保存（テキスト/バイト両方）
+        res = {
+            "status": status_line,
+            "svg_text": layout_svg_path.read_text(encoding="utf-8") if layout_svg_path.exists() else None,
+            "svg_bytes": layout_svg_path.read_bytes() if layout_svg_path.exists() else None,
+            "csv_bytes": placement_csv_path.read_bytes() if placement_csv_path.exists() else None,
+            "run_dir": str(run_dir),
+        }
+        st.session_state.result = res
+        
+        pb_finish("完了")
+
+        st.success(f"完了: {run_dir}")
+        
     except Exception as e:
         pb_finish("エラーで停止", hide_bar=True)
-        st.error(f"config.json の読み込みに失敗しました: {e}")
-        # 変換ログがあれば併せて表示
-        st.stop()
-
-        # 上書き（必要なキーが無ければ作る）
-    if "room" not in cfg: cfg["room"] = {}
-    if "requirements" not in cfg: cfg["requirements"] = {}
-    cfg["room"]["min_aisle_mm"] = int(min_aisle_mm)
-    cfg["requirements"]["front_clear_mm"] = int(front_clear_mm)
-    # front_clear_mode は既存値を尊重（無ければ hard）
-    if "front_clear_mode" not in cfg["requirements"]:
-        cfg["requirements"]["front_clear_mode"] = "hard"
-
-    # >>> PATCH(2): UI の requirements / weights を反映（あれば）
-    #   ※ req_ui / weights_ui は Inputs 側の expander で作った辞書を想定
-    #   ※ もし別スコープなら st.session_state["req_ui"] 等から拾ってください
-    
-    # solver パラメータの反映
-    cfg.setdefault("solver", {})
-    if "solver_ui" in locals() and isinstance(solver_ui, dict):
-        cfg["solver"].update(solver_ui)
-    
-    try:
-        if "req_ui" in locals() and isinstance(req_ui, dict):
-            cfg.setdefault("requirements", {}).update(req_ui)
-        elif hasattr(st, "session_state") and isinstance(st.session_state.get("req_ui"), dict):
-            cfg.setdefault("requirements", {}).update(st.session_state["req_ui"])
-    except Exception:
-        pass
-
-    try:
-        if "weights_ui" in locals() and isinstance(weights_ui, dict):
-            cfg.setdefault("weights", {}).update(weights_ui)
-        elif hasattr(st, "session_state") and isinstance(st.session_state.get("weights_ui"), dict):
-            cfg.setdefault("weights", {}).update(st.session_state["weights_ui"])
-    except Exception:
-        pass
-
-    # レール未定義なら安全側にフォールバック（解なし予防）
-    rails = cfg.get("infrastructure", {}).get("curtain_rails", [])
-    if not rails and cfg["requirements"].get("curtain_rail_mode") not in ("none", None):
-        cfg["requirements"]["curtain_rail_mode"] = "none"
-    # <<< PATCH(2) ここまで
-
-    _write_json(cfg_path, cfg)
-
-    # >>> PROGRESS PATCH
-    # _p(70, "最適化の準備中…")
-    # <<< PROGRESS PATCH
-
-    # 注意喚起（単位倍率）
-    # SCALE_NOTE = ""
-    # try:
-    #     # svg2config が倍率を掛けている可能性があるため軽く注意書き
-    #     room_w = int(cfg["room"]["width_mm"])
-    #     room_h = int(cfg["room"]["depth_mm"])
-    #     SCALE_NOTE = f"（会場 {room_w}×{room_h} mm。※ `svg2config.py` の倍率と booths.csv の単位を一致させてください）"
-    # except Exception:
-    #     pass
-
-    # 最適化の実行
-    # st.write("### 最適化を実行中…")
-    
-    # >>> PROGRESS PATCH
-    # _p(80, "最適化を実行中…")
-    # <<< PROGRESS PATCH
-    
-    pb_update(70, f"最適化を実行中…（最大 {int(max_time_s)} 秒）")
-    
-    rc2, out2, err2 = _run_py(run_dir / "layout_optimizer.py", run_dir)
-    status_line = _parse_status(out2 + "\n" + err2)
-    st.write(f"**status**: {status_line}")
-    
-    # >>> PROGRESS PATCH
-    # _p(100, "完了")
-    # 進捗バーを消したい場合は：
-    # pbar.empty()
-    # <<< PROGRESS PATCH
-
-    if rc2 != 0:
-        pb_finish("エラーで停止", hide_bar=True)
-        st.error("最適化スクリプトがエラーで終了しました。ログを確認してください。")
-        st.code(err2 or out2, language="bash")
-        st.stop()
-
-    # 成果物の取り出し
-    layout_svg_path = run_dir / "layout.svg"
-    placement_csv_path = run_dir / "placement.csv"
-    
-    # ★★★ 追加：結果を session_state に保存（テキスト/バイト両方）
-    res = {
-        "status": status_line,
-        "svg_text": layout_svg_path.read_text(encoding="utf-8") if layout_svg_path.exists() else None,
-        "svg_bytes": layout_svg_path.read_bytes() if layout_svg_path.exists() else None,
-        "csv_bytes": placement_csv_path.read_bytes() if placement_csv_path.exists() else None,
-        "run_dir": str(run_dir),
-    }
-    st.session_state.result = res
-    
-    pb_finish("完了")
-
-    st.success(f"完了: {run_dir}")
+        st.exception(e)   # ← これで真っ白にならず、原因行が見える
 
 # === 共通: 結果の描画（ダウンロードでの再実行でも毎回出す） ===
 res = st.session_state.result
