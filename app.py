@@ -18,28 +18,6 @@ st.markdown("""
 
 st.markdown("<h1 style='text-align:center;'>展示レイアウト最適化</h1>", unsafe_allow_html=True)
 
-st.markdown('<div id="uploader-center">', unsafe_allow_html=True)
-file = st.file_uploader("Booths CSV をアップロード", type=["csv"], key="booths_csv")
-st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-/* このブロック内の file_uploader を中央寄せ */
-#uploader-center [data-testid="stFileUploader"] { text-align: center; }
-
-/* ラベル（見出し）を中央に */
-#uploader-center [data-testid="stFileUploader"] > label {
-  display: flex; justify-content: center; width: 100%;
-}
-
-/* ドロップ領域の中身も中央に（テキスト＆ボタン） */
-#uploader-center [data-testid="stFileUploader"] section {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center;
-}
-</style>
-""", unsafe_allow_html=True)
-
 # ---- ファイル入力 ----
 col1, col2 = st.columns(2)
 with col1:
