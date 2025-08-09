@@ -173,12 +173,18 @@ class ProgressUI:
     def finish(self, msg="完了", hide_bar=False):
         if self.active and self.pbar is not None:
             self.pbar.progress(100, text=msg)
-        # ← スピナーだけ消す
-        self.icon_ph.empty()
-        # ラベルは残す（必要ならplain textでもOK）
-        self.text_ph.markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
-        if hide_bar:
-            self.bar_ph.empty()
+
+        # 1) 親コンテナを一度まっさらにする（スピナーDOMを確実に消す）
+        self.wrap.empty()
+
+        # 2) 同じ位置に“スピナー無し”で描き直す
+        wrap2 = st.container()
+        cols2 = wrap2.columns([0.05, 0.95])
+        # 左（アイコン側）は何も描かない＝スピナー無し
+        cols2[1].markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
+        if not hide_bar:
+            st.progress(100, text=msg)  # バーは100%のまま表示。消したい場合はコメントアウト
+
         self.active = False
 
 log_box = st.empty()
