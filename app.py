@@ -137,14 +137,14 @@ pb_bar_ph   = st.empty()
 
 run_btn = st.button("▶ 実行", type="primary", use_container_width=True)
 
-# >>> PROGRESS PATCH: 初期化（実行直前で）
-pbar = st.progress(0, text="準備中…")
-def _p(v, msg=""):
-    try:
-        pbar.progress(v, text=msg)
-    except Exception:
-        pass
-# <<< PROGRESS PATCH
+# # >>> PROGRESS PATCH: 初期化（実行直前で）
+# pbar = st.progress(0, text="準備中…")
+# def _p(v, msg=""):
+#     try:
+#         pbar.progress(v, text=msg)
+#     except Exception:
+#         pass
+# # <<< PROGRESS PATCH
 
 class ProgressUI:
     def __init__(self):
