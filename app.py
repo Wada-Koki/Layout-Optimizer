@@ -25,16 +25,6 @@ st.markdown("""
 .main .block-container { max-width: 960px; margin: 0 auto; }
 </style>
 """, unsafe_allow_html=True)
-
-# 単一の状態で管理（ここ以外で progress/spinner を作らない）
-if "prog" not in st.session_state:
-    st.session_state.prog = {
-        "spin_ph": st.empty(),   # ← スピナー（くるくる）だけを描く場所
-        "text_ph": st.empty(),   # ← メッセージ文字列を描く場所
-        "bar_ph":  st.empty(),   # ← プログレスバーを描く場所
-        "bar": None,
-        "active": False
-    }
     
 # === PATCH2: 進捗ユーティリティ（スピナーとバーを別プレースホルダで管理） ===
 def pb_start(msg="準備中…"):
@@ -141,6 +131,23 @@ with st.expander("高度な設定", expanded=False):
 # pb_bar_ph   = st.empty()
 
 run_btn = st.button("▶ 実行", type="primary", use_container_width=True)
+
+# 進捗表示専用ゾーン（ここ“だけ”にスピナー＆バーを出す）
+progress_zone = st.container()
+
+# 単一の状態で管理（ここ以外で progress/spinner を作らない）
+if "prog" not in st.session_state:
+    st.session_state.prog = {
+        "zone": progress_zone,
+        "spin_ph": progress_zone.empty(),   # ← ゾーンの子として作る
+        "text_ph": progress_zone.empty(),
+        "bar_ph":  progress_zone.empty(),
+        "bar": None,
+        "active": False
+    }
+else:
+    # rerun のたびに最新のゾーンを参照（列の再構成対策）
+    st.session_state.prog["zone"] = progress_zone
 
 # # >>> PROGRESS PATCH: 初期化（実行直前で）
 # pbar = st.progress(0, text="準備中…")
