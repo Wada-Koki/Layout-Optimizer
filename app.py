@@ -20,6 +20,27 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+class ProgressUI:
+    def __init__(self):
+        self.label_ph = st.empty()
+        self.bar_ph = st.empty()
+        self.pbar = None
+    def start(self, msg="準備中…"):
+        self.label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
+        self.pbar = self.bar_ph.progress(0, text=msg)
+    def update(self, v:int, msg:str):
+        if self.pbar is None:
+            self.start(msg)
+        self.pbar.progress(v, text=msg)
+        self.label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
+    def finish(self, msg="完了", hide_bar=False):
+        if self.pbar is not None:
+            self.pbar.progress(100, text=msg)
+        # スピナーだけ消す（ラベルは残す）
+        self.label_ph.markdown(f"<div class='pb-label'>{msg}</div>", unsafe_allow_html=True)
+        if hide_bar:
+            self.bar_ph.empty()   # バー自体も消したい時は True に
+
 st.markdown("""
 <style>
 .main .block-container { max-width: 960px; margin: 0 auto; }
