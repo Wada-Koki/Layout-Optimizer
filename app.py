@@ -21,9 +21,9 @@ st.markdown("<h1 style='text-align:center;'>展示レイアウト最適化</h1>"
 # ---- ファイル入力 ----
 col1, col2 = st.columns(2)
 with col1:
-    booths_file = st.file_uploader("1) 展示希望(CSV)を選択", type=["csv"])
+    booths_file = st.file_uploader("1)(border=True): 展示希望(CSV)を選択", type=["csv"])
 with col2:
-    hall_file   = st.file_uploader("2) 会場レイアウト（SVG または JSON）を選択", type=["svg","json"])
+    hall_file   = st.file_uploader("2)(border=True): 会場レイアウト（SVG または JSON）を選択", type=["svg","json"])
 
 col1, col2 = st.columns(2)
 with col1:
