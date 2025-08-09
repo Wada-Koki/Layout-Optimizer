@@ -21,45 +21,45 @@ st.markdown("<h1 style='text-align:center;'>展示レイアウト最適化</h1>"
 # ---- ファイル入力 ----
 col1, col2 = st.columns(2)
 with col1:
-    booths_file = st.file_uploader("1) 展示希望(CSV)を選択", type=["csv"])
+    booths_file = st.file_uploader("展示希望(CSV)を選択", type=["csv"])
 with col2:
-    hall_file   = st.file_uploader("2) 会場レイアウト（SVG または JSON）を選択", type=["svg","json"])
+    hall_file   = st.file_uploader("会場レイアウト（SVG または JSON）を選択", type=["svg","json"])
 
 col1, col2 = st.columns(2)
 with col1:
-    min_aisle_mm = st.number_input("3) ブース間隔 min_aisle_mm", min_value=0, step=100, value=1000)
+    min_aisle_mm = st.number_input("ブース間隔[mm]", min_value=0, step=100, value=1000, help="ブースとブースの間の最低距離です。[min_aisle_mm]")
 with col2:
-    front_clear_mm = st.number_input("4) 正面スペース front_clear_mm", min_value=0, step=100, value=0)
+    front_clear_mm = st.number_input("展示正面の確保距離[mm] ", min_value=0, step=100, value=0, help="ブース前に空ける通行・鑑賞スペースの距離です。[front_clear_mm]")
     
 # ── 追加: requirements / weights のUI ─────────────────────────
 with st.expander("詳細設定（requirements / weights）", expanded=False):
-    st.subheader("requirements")
+    st.subheader("制約")
     r1, r2 = st.columns(2)
     with r1:
         curtain_rail_mode = st.selectbox(
-            "curtain_rail_mode", ["if_wanted", "all", "none"], index=0,
-            help="カーテン希望: if_wanted=希望ブースのみ必須 / all=全ブース必須 / none=無視"
+            "カーテンレールの使い方", ["if_wanted", "all", "none"], index=0,
+            help="カーテン希望: if_wanted=希望ブースのみ必須 / all=全ブース必須 / none=無視 [curtain_rail_mode]"
         )
-        front_clear_mode = st.selectbox("front_clear_mode", ["hard", "soft"], index=0)
-        wall_contact_prefer = st.checkbox("wall_contact_prefer", True)
-        wall_contact_default_hard = st.checkbox("wall_contact_default_hard", True)
-        wall_contact_hard = st.checkbox("wall_contact_hard", False)
+        front_clear_mode = st.selectbox("正面の確保の厳しさ", ["hard", "soft"], index=0, help="正面スペースの確保の優先度を設定します。必須：hard / なるべく：soft [front_clear_mode]")
+        wall_contact_prefer = st.checkbox("壁沿い配置を優先", True, help="可能な限りブースを壁にぴったり付けるようにします。[wall_contact_prefer]")
+        wall_contact_default_hard = st.checkbox("壁沿いを基本ルールにする", True, help="特に指定がないブースも原則“壁付け”にします（やや厳しめ）。[wall_contact_default_hard]")
+        wall_contact_hard = st.checkbox("壁沿いを絶対条件にする", False, help="満たせないと配置不可になる可能性があります（かなり厳しめ）。[wall_contact_hard]")
     with r2:
-        inner_walls_count_as_wall_contact = st.checkbox("inner_walls_count_as_wall_contact", True)
-        enforce_outer_wall_band = st.checkbox("enforce_outer_wall_band", False)
-        outlet_demand_hard_radius_mm = st.number_input("outlet_demand_hard_radius_mm [mm]", 0, 1_000_000, 0, step=100)
-        outlet_reserve_radius_mm = st.number_input("outlet_reserve_radius_mm [mm]", 0, 1_000_000, 0, step=100)
+        outlet_demand_hard_radius_mm = st.number_input("コンセント必須距離 [mm]", 0, 1_000_000, 0, step=100, help="コンセント希望ブースは、この半径以内にコンセントが必須。[outlet_demand_hard_radius_mm]")
+        outlet_reserve_radius_mm = st.number_input("コンセント予約帯 [mm]", 0, 1_000_000, 0, step=100, help="この半径内は希望者を優先配置（非希望者は入りづらく）。[outlet_reserve_radius_mm]")
+        inner_walls_count_as_wall_contact = st.checkbox("内壁も『壁沿い』として扱う", True, help="内壁に密着しても壁沿い扱いにします。[inner_walls_count_as_wall_contact]")
+        enforce_outer_wall_band = st.checkbox("外壁帯に必ず触れる", False, help="外周から一定幅の帯に必ず接触させます（解が出にくい場合あり）。[enforce_outer_wall_band]")
 
-    st.subheader("weights")
+    st.subheader("重み")
     w1, w2 = st.columns(2)
     with w1:
-        compactness = st.number_input("compactness", 0.0, 1_000_000.0, 3000.0, step=100.0)
-        wall_contact_bonus = st.number_input("wall_contact_bonus", 0.0, 1_000_000.0, 500.0, step=50.0)
-        curtain_rail_match = st.number_input("curtain_rail_match", 0.0, 1_000_000.0, 1.0, step=0.1)
+        compactness = st.number_input("全体のまとまり度合い", 0.0, 1_000_000.0, 3000.0, step=100.0, help="大きいほどブース群をコンパクトに集めます。[compactness]")
+        wall_contact_bonus = st.number_input("壁沿いの度合い", 0.0, 1_000_000.0, 500.0, step=50.0, help="大きいほど壁に沿いやすくなります[wall_contact_bonus]")
+        curtain_rail_match = st.number_input("レール一致度合い", 0.0, 1_000_000.0, 1.0, step=0.1, help="大きいほどバナーのレールに沿いやすくなります。[curtain_rail_match]")
     with w2:
-        outlet_distance = st.number_input("outlet_distance", 0.0, 1_000_000.0, 1.0, step=0.1)
-        outlet_repel_non_wanter = st.number_input("outlet_repel_non_wanter", 0.0, 1_000_000.0, 0.0, step=0.1)
-        preferred_area_bonus = st.number_input("preferred_area_bonus", 0.0, 1_000_000.0, 1000.0, step=10.0)
+        outlet_distance = st.number_input("コンセント接近度合い", 0.0, 1_000_000.0, 1.0, step=0.1, help="大きいほど希望者をコンセント近くへ配置します。[outlet_distance]")
+        outlet_repel_non_wanter = st.number_input("非希望者のコンセント距離", 0.0, 1_000_000.0, 0.0, step=0.1, help="大きいほどコンセント不要ブースがコンセント付近を占有しないようにします。[outlet_repel_non_wanter]")
+        preferred_area_bonus = st.number_input("希望エリア配置度合い", 0.0, 1_000_000.0, 1000.0, step=10.0, help="大きいほど希望エリア内に配置しやすくなります。[preferred_area_bonus]")
 
     # 実行時に使う辞書（グローバルにせず、この下の if run_btn: で参照）
     req_ui = {
