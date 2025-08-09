@@ -35,9 +35,20 @@ def pb_start(msg="準備中…"):
     P = st.session_state.prog
     # 前回の表示をクリア
     P["spin_ph"].empty(); P["text_ph"].empty(); P["bar_ph"].empty()
-    # スピナーとラベルを表示、バーを作成
+
+    # ★ 横並びの1行（左: スピナー / 右: ラベル）
+    #   P に progress_zone を持っている場合はその中で columns を作る
+    row_cols = (P.get("zone").columns([0.08, 0.92])     # zone がある場合
+                if P.get("zone") else st.columns([0.08, 0.92]))  # 無い場合のフォールバック
+
+    P["spin_ph"] = row_cols[0].empty()
+    P["text_ph"] = row_cols[1].empty()
+
+    # スピナーとラベルを横並びで描画
     P["spin_ph"].markdown("<span class='pb-spin'></span>", unsafe_allow_html=True)
     P["text_ph"].markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
+
+    # バーはその下に（縦に並ぶ）
     P["bar"] = P["bar_ph"].progress(0)
     P["active"] = True
 
@@ -347,7 +358,7 @@ if run_btn:
     # _p(80, "最適化を実行中…")
     # <<< PROGRESS PATCH
     
-    pb_update(50, "最適化中…")
+    pb_update(70, "最適化中…")
     
     rc2, out2, err2 = _run_py(run_dir / "layout_optimizer.py", run_dir)
     status_line = _parse_status(out2 + "\n" + err2)
