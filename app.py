@@ -38,8 +38,8 @@ def pb_start(msg="準備中…"):
 
     # ★ 横並びの1行（左: スピナー / 右: ラベル）
     #   P に progress_zone を持っている場合はその中で columns を作る
-    row_cols = (P.get("zone").columns([0.05, 0.95])     # zone がある場合
-                if P.get("zone") else st.columns([0.05, 0.95]))  # 無い場合のフォールバック
+    row_cols = (P.get("zone").columns([0.93, 0.07])     # zone がある場合
+                if P.get("zone") else st.columns([0.93, 0.07]))  # 無い場合のフォールバック
 
     P["text_ph"] = row_cols[0].empty()
     P["spin_ph"] = row_cols[1].empty()
