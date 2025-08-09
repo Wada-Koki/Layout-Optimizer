@@ -62,6 +62,9 @@ def pb_finish(msg="完了", hide_bar=False):
         if hide_bar:
             st.session_state.pb_bar_ph.empty()
         st.session_state.pb_active = False
+        st.session_state.pb_label_ph.markdown(
+            f"<div class='pb-label' style='display:none;'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True
+        )
 
 st.markdown("<h1 style='text-align:center;'><span>展示レイアウト</span><span>最適化</span></h1>", unsafe_allow_html=True)
 
@@ -231,7 +234,7 @@ if run_btn:
         # バーとラベル両方を更新
         try:
             pbar.progress(v, text=msg)
-            # pb_label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
+            pb_label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
         except Exception:
             pass
         
