@@ -218,7 +218,7 @@ def _parse_status(text: str) -> str:
     return "status: (未取得)"
 
 if run_btn:
-    pb_label_ph.markdown("<div class='pb-label'><span class='pb-spin'></span> 準備中…</div>", unsafe_allow_html=True)
+    # pb_label_ph.markdown("<div class='pb-label'><span class='pb-spin'></span> 準備中…</div>", unsafe_allow_html=True)
     pbar = pb_bar_ph.progress(0, text="準備中…")
 
     def _p(v:int, msg:str):
@@ -298,7 +298,7 @@ if run_btn:
             # <<< PROGRESS PATCH
 
             rc, out, err = _run_py(run_dir / "svg2config.py", run_dir)
-            s.update(label="変換完了" if rc == 0 else "変換でエラー", state="complete")
+            s.update(label="" if rc == 0 else "変換でエラー", state="complete")
             if rc != 0:
                 # >>> PROGRESS PATCH
                 _p(100, "エラーで停止")
