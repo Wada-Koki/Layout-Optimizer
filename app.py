@@ -38,7 +38,7 @@ def pb_start(msg="準備中…"):
     # スピナーとラベルを表示、バーを作成
     P["spin_ph"].markdown("<span class='pb-spin'></span>", unsafe_allow_html=True)
     P["text_ph"].markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
-    P["bar"] = P["bar_ph"].progress(0, text=msg)
+    P["bar"] = P["bar_ph"].progress(0)
     P["active"] = True
 
 def pb_update(v:int, msg:str):
@@ -46,7 +46,7 @@ def pb_update(v:int, msg:str):
     if not P["active"]:
         pb_start(msg); return
     P["text_ph"].markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
-    P["bar"].progress(v, text=msg)
+    P["bar"].progress(v)
 
 def pb_finish(msg="完了", hide_bar=False):
     P = st.session_state.prog
@@ -59,7 +59,7 @@ def pb_finish(msg="完了", hide_bar=False):
     if hide_bar:
         P["bar_ph"].empty()
     else:
-        P["bar"].progress(100, text=msg)
+        P["bar"].progress(100)
     P["active"] = False
 
 st.markdown("<h1 style='text-align:center;'><span>展示レイアウト</span><span>最適化</span></h1>", unsafe_allow_html=True)
