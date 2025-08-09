@@ -1,4 +1,7 @@
 streamlit
 svgwrite
+lxml
+pandas
+numpy
 ortools
 protobuf>=5.26,<6
