@@ -146,26 +146,40 @@ run_btn = st.button("▶ 実行", type="primary", use_container_width=True)
 #         pass
 # # <<< PROGRESS PATCH
 
+# CSSはそのままでOK（pb-label / pb-spin 定義済を前提）
 class ProgressUI:
     def __init__(self):
-        self.label_ph = st.empty()
-        self.bar_ph = st.empty()
+        # 3分割: [アイコン] [テキスト] [バー]
+        self.wrap_ph = st.container()         # まとまり（任意）
+        cols = self.wrap_ph.columns([0.05, 0.95])  # アイコン/テキストの横並び
+        self.icon_ph = cols[0].empty()
+        self.text_ph = cols[1].empty()
+        self.bar_ph  = st.empty()
         self.pbar = None
+        self.active = False
+
     def start(self, msg="準備中…"):
-        self.label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
+        self.icon_ph.markdown("<span class='pb-spin'></span>", unsafe_allow_html=True)
+        self.text_ph.markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
         self.pbar = self.bar_ph.progress(0, text=msg)
+        self.active = True
+
     def update(self, v:int, msg:str):
-        if self.pbar is None:
+        if not self.active:
             self.start(msg)
         self.pbar.progress(v, text=msg)
-        self.label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
+        self.text_ph.markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
+
     def finish(self, msg="完了", hide_bar=False):
-        if self.pbar is not None:
+        if self.active and self.pbar is not None:
             self.pbar.progress(100, text=msg)
-        # スピナーだけ消す（ラベルは残す）
-        self.label_ph.markdown(f"<div class='pb-label'>{msg}</div>", unsafe_allow_html=True)
+        # ← スピナーだけ消す
+        self.icon_ph.empty()
+        # ラベルは残す（必要ならplain textでもOK）
+        self.text_ph.markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
         if hide_bar:
-            self.bar_ph.empty()   # バー自体も消したい時は True に
+            self.bar_ph.empty()
+        self.active = False
 
 log_box = st.empty()
 
@@ -370,7 +384,7 @@ if run_btn:
     #     pass
 
     # 最適化の実行
-    st.write("### 最適化を実行中…")
+    # st.write("### 最適化を実行中…")
     
     # >>> PROGRESS PATCH
     _p(80, "最適化を実行中…")
