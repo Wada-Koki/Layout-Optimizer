@@ -26,45 +26,47 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 進捗の状態をセッションで管理
-if "pb_active" not in st.session_state:
-    st.session_state.pb_active = False
-    st.session_state.pb_label_ph = st.empty()
-    st.session_state.pb_bar_ph   = st.empty()  # ここにprogressを作る
+# 単一の状態で管理（ここ以外で progress/spinner を作らない）
+if "prog" not in st.session_state:
+    st.session_state.prog = {
+        "spin_ph": st.empty(),   # ← スピナー（くるくる）だけを描く場所
+        "text_ph": st.empty(),   # ← メッセージ文字列を描く場所
+        "bar_ph":  st.empty(),   # ← プログレスバーを描く場所
+        "bar": None,
+        "active": False
+    }
     
+# === PATCH2: 進捗ユーティリティ（スピナーとバーを別プレースホルダで管理） ===
 def pb_start(msg="準備中…"):
-    # 既存バーがあれば消す（これで“2本目”の残留を防止）
-    if st.session_state.pb_active:
-        st.session_state.pb_label_ph.empty()
-        st.session_state.pb_bar_ph.empty()
-        st.session_state.pb_active = False
-
-    st.session_state.pb_label_ph.markdown(
-        f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True
-    )
-    # 重要：同じ key を使って“再利用”する（重複生成を防ぐ）
-    st.session_state.pb = st.session_state.pb_bar_ph.progress(0, text=msg, key="main_progress")
-    st.session_state.pb_active = True
+    P = st.session_state.prog
+    # 前回の表示をクリア
+    P["spin_ph"].empty(); P["text_ph"].empty(); P["bar_ph"].empty()
+    # スピナーとラベルを表示、バーを作成
+    P["spin_ph"].markdown("<span class='pb-spin'></span>", unsafe_allow_html=True)
+    P["text_ph"].markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
+    P["bar"] = P["bar_ph"].progress(0, text=msg)
+    P["active"] = True
 
 def pb_update(v:int, msg:str):
-    if not st.session_state.pb_active:
-        pb_start(msg)
-    st.session_state.pb.progress(v, text=msg)
-    st.session_state.pb_label_ph.markdown(
-        f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True
-    )
+    P = st.session_state.prog
+    if not P["active"]:
+        pb_start(msg); return
+    P["text_ph"].markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
+    P["bar"].progress(v, text=msg)
 
 def pb_finish(msg="完了", hide_bar=False):
-    if st.session_state.pb_active:
-        st.session_state.pb.progress(100, text=msg)
-        # スピナーだけ消す（ラベルは残す）
-        st.session_state.pb_label_ph.markdown(f"<div class='pb-label'>{msg}</div>", unsafe_allow_html=True)
-        if hide_bar:
-            st.session_state.pb_bar_ph.empty()
-        st.session_state.pb_active = False
-        st.session_state.pb_label_ph.markdown(
-            f"<div class='pb-label' style='display:none;'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True
-        )
+    P = st.session_state.prog
+    if not P["active"]:
+        return
+    # スピナーだけ確実に消す（バーは残す）
+    P["spin_ph"].empty()
+    # ラベルは“スピナー無し”で描き直し
+    P["text_ph"].markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
+    if hide_bar:
+        P["bar_ph"].empty()
+    else:
+        P["bar"].progress(100, text=msg)
+    P["active"] = False
 
 st.markdown("<h1 style='text-align:center;'><span>展示レイアウト</span><span>最適化</span></h1>", unsafe_allow_html=True)
 
@@ -135,8 +137,8 @@ with st.expander("高度な設定", expanded=False):
 # ─────────────────────────────────────────────────────────────
 
 # 最初は非表示：押されたら中身を入れる
-pb_label_ph = st.empty()
-pb_bar_ph   = st.empty()
+# pb_label_ph = st.empty()
+# pb_bar_ph   = st.empty()
 
 run_btn = st.button("▶ 実行", type="primary", use_container_width=True)
 
@@ -150,47 +152,6 @@ run_btn = st.button("▶ 実行", type="primary", use_container_width=True)
 # # <<< PROGRESS PATCH
 
 # CSS はそのままでOK（.pb-spin / .pb-label 定義済み前提）
-
-class ProgressUI:
-    def __init__(self):
-        # ここだけに全部描く（※これが肝）
-        self.block = st.empty()
-        self.bar = None
-        self.active = False
-
-    def start(self, msg="準備中…"):
-        with self.block.container():
-            st.markdown(
-                f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>",
-                unsafe_allow_html=True,
-            )
-            self.bar = st.progress(0, text=msg)
-        self.active = True
-
-    def update(self, v: int, msg: str):
-        if not self.active:
-            self.start(msg)
-        # blockごと再描画（古い内容を上書き）
-        with self.block.container():
-            st.markdown(
-                f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>",
-                unsafe_allow_html=True,
-            )
-            self.bar.progress(v, text=msg)
-
-    def finish(self, msg="完了", hide_bar=False):
-        if self.active and self.bar is not None:
-            # いったんブロックを完全クリア
-            self.block.empty()
-            # 同じ場所に “スピナー無し” で描き直し
-            with self.block.container():
-                st.markdown(
-                    f"<div class='pb-label'>{msg}</div>",  # ← スピナー無し
-                    unsafe_allow_html=True,
-                )
-                if not hide_bar:
-                    st.progress(100, text=msg)
-        self.active = False
 
 log_box = st.empty()
 
@@ -229,17 +190,9 @@ def _parse_status(text: str) -> str:
     return "status: (未取得)"
 
 if run_btn:
-    # pb_label_ph.markdown("<div class='pb-label'><span class='pb-spin'></span> 準備中…</div>", unsafe_allow_html=True)
-    pbar = pb_bar_ph.progress(0, text="準備中…")
+    # ▼ ここで1回だけ出す（最初は非表示）
+    pb_start("準備中…")
 
-    def _p(v:int, msg:str):
-        # バーとラベル両方を更新
-        try:
-            pbar.progress(v, text=msg)
-            pb_label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
-        except Exception:
-            pass
-        
     if not booths_file or not hall_file:
         st.error("booths.csv と 会場レイアウト（SVG または config.json）の両方を指定してください。")
         st.stop()
@@ -276,44 +229,25 @@ if run_btn:
         else:
             # 最低限のデフォルト（必要に応じて調整）
             default_cmap = {
-                "line": {
-                    "stroke": {
-                    "#009944": "curtain-rail",
-                    "#1d2088": "inner-wall"
-                    }
-                },
-                "rect": {
-                    "fill": {
-                    "#e60012": "no-go"
-                    },
-                    "stroke": {
-                    "#000000": "room" 
-                    }
-                },
-                "circle": {
-                    "fill": {
-                    "#00a0e9": "outlet"
-                    }
-                }
+                "line": {"stroke": {"#009944": "curtain-rail", "#1d2088": "inner-wall"}},
+                "rect": {"fill": {"#e60012": "no-go"}, "stroke": {"#000000": "room"}},
+                "circle": {"fill": {"#00a0e9": "outlet"}}
             }
             color_map_dst.write_text(json.dumps(default_cmap, ensure_ascii=False, indent=2), encoding="utf-8")
-            
-        # >>> PROGRESS PATCH
-        _p(5, "入力を確認中…")
-        # <<< PROGRESS PATCH
+
+        # 進捗更新（置換ポイント①）
+        pb_update(5, "入力を確認中…")
 
         # SVG → config.json 変換
         with st.status("SVG を config.json に変換中...", expanded=False) as s:
-            # >>> PROGRESS PATCH
-            _p(20, "SVG を解析中…")
-            # <<< PROGRESS PATCH
+            # 進捗更新（置換ポイント②）
+            pb_update(20, "SVG を解析中…")
 
             rc, out, err = _run_py(run_dir / "svg2config.py", run_dir)
             s.update(label="" if rc == 0 else "変換でエラー", state="complete")
             if rc != 0:
-                # >>> PROGRESS PATCH
-                _p(100, "エラーで停止")
-                # <<< PROGRESS PATCH
+                # 進捗：エラーストップ前にスピナーとバーを処理
+                pb_finish("エラーで停止", hide_bar=True)
                 st.error("svg2config.py の実行に失敗しました。ログを確認してください。")
                 st.code(err or out, language="bash")
                 st.stop()
@@ -321,17 +255,16 @@ if run_btn:
                 st.info("【変換ログ】")
                 st.code(err, language="bash")
 
-        # >>> PROGRESS PATCH
-        _p(40, "config.json を読み込み中…")
-        # <<< PROGRESS PATCH
+        # 進捗更新（置換ポイント③）
+        pb_update(40, "config.json を読み込み中…")
+
     else:
         # 既存config.json を採用
         config_json_in = run_dir / "config.json"
         config_json_in.write_bytes(hall_file.getvalue())
 
-        # >>> PROGRESS PATCH
-        _p(50, "パラメータを反映中…")
-        # <<< PROGRESS PATCH
+        # 進捗更新（置換ポイント④）
+        pb_update(50, "パラメータを反映中…")
         
 
 
@@ -381,7 +314,7 @@ if run_btn:
     _write_json(cfg_path, cfg)
 
     # >>> PROGRESS PATCH
-    _p(70, "最適化の準備中…")
+    # _p(70, "最適化の準備中…")
     # <<< PROGRESS PATCH
 
     # 注意喚起（単位倍率）
@@ -398,7 +331,7 @@ if run_btn:
     # st.write("### 最適化を実行中…")
     
     # >>> PROGRESS PATCH
-    _p(80, "最適化を実行中…")
+    # _p(80, "最適化を実行中…")
     # <<< PROGRESS PATCH
     
     rc2, out2, err2 = _run_py(run_dir / "layout_optimizer.py", run_dir)
@@ -406,7 +339,7 @@ if run_btn:
     st.write(f"**status**: {status_line}")
     
     # >>> PROGRESS PATCH
-    _p(100, "完了")
+    # _p(100, "完了")
     # 進捗バーを消したい場合は：
     # pbar.empty()
     # <<< PROGRESS PATCH
@@ -446,5 +379,7 @@ if run_btn:
         st.code(out2, language="bash")
         if err2:
             st.code(err2, language="bash")
+            
+    pb_finish("完了")
 
     st.success(f"完了: {run_dir}")
