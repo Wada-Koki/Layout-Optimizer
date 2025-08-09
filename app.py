@@ -231,7 +231,7 @@ if run_btn:
         # バーとラベル両方を更新
         try:
             pbar.progress(v, text=msg)
-            pb_label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
+            # pb_label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
         except Exception:
             pass
         
