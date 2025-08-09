@@ -250,22 +250,23 @@ if run_btn:
         # 進捗更新（置換ポイント①）
         pb_update(5, "入力を確認中…")
 
-        # SVG → config.json 変換
-        with st.status("SVG を config.json に変換中...", expanded=False) as s:
-            # 進捗更新（置換ポイント②）
-            pb_update(20, "SVG を解析中…")
+        # 進捗更新（置換ポイント②）
+        pb_update(20, "SVG を解析中…")
 
-            rc, out, err = _run_py(run_dir / "svg2config.py", run_dir)
-            s.update(label="" if rc == 0 else "変換でエラー", state="complete")
-            if rc != 0:
-                # 進捗：エラーストップ前にスピナーとバーを処理
+        # エラー時のみステータス枠を出すためのプレースホルダ
+        status_ph = st.empty()
+
+        rc, out, err = _run_py(run_dir / "svg2config.py", run_dir)
+
+        if rc != 0:
+            # ✳ エラー時だけステータスUIを描画
+            with status_ph.status("SVG を config.json に変換中...", expanded=True) as s:
+                s.update(label="変換でエラー", state="error")
                 pb_finish("エラーで停止", hide_bar=True)
                 st.error("svg2config.py の実行に失敗しました。ログを確認してください。")
                 st.code(err or out, language="bash")
                 st.stop()
-            if err:
-                st.info("【変換ログ】")
-                st.code(err, language="bash")
+        # 正常時は何も描画しない（枠ごと非表示）
 
         # 進捗更新（置換ポイント③）
         pb_update(40, "config.json を読み込み中…")
@@ -345,6 +346,8 @@ if run_btn:
     # >>> PROGRESS PATCH
     # _p(80, "最適化を実行中…")
     # <<< PROGRESS PATCH
+    
+    pb_update(50, "最適化中…")
     
     rc2, out2, err2 = _run_py(run_dir / "layout_optimizer.py", run_dir)
     status_line = _parse_status(out2 + "\n" + err2)
