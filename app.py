@@ -86,6 +86,15 @@ with st.expander("高度な設定", expanded=False):
 
 run_btn = st.button("▶ 実行", type="primary", use_container_width=True)
 
+# >>> PROGRESS PATCH: 初期化（実行直前で）
+pbar = st.progress(0, text="準備中…")
+def _p(v, msg=""):
+    try:
+        pbar.progress(v, text=msg)
+    except Exception:
+        pass
+# <<< PROGRESS PATCH
+
 log_box = st.empty()
 
 def _read_json_with_comments(p: Path):
@@ -180,21 +189,43 @@ if run_btn:
                 }
             }
             color_map_dst.write_text(json.dumps(default_cmap, ensure_ascii=False, indent=2), encoding="utf-8")
+            
+        # >>> PROGRESS PATCH
+        _p(5, "入力を確認中…")
+        # <<< PROGRESS PATCH
+
         # SVG → config.json 変換
         with st.status("SVG を config.json に変換中...", expanded=False) as s:
+            # >>> PROGRESS PATCH
+            _p(20, "SVG を解析中…")
+            # <<< PROGRESS PATCH
+
             rc, out, err = _run_py(run_dir / "svg2config.py", run_dir)
             s.update(label="変換完了" if rc == 0 else "変換でエラー", state="complete")
             if rc != 0:
+                # >>> PROGRESS PATCH
+                _p(100, "エラーで停止")
+                # <<< PROGRESS PATCH
                 st.error("svg2config.py の実行に失敗しました。ログを確認してください。")
                 st.code(err or out, language="bash")
                 st.stop()
             if err:
                 st.info("【変換ログ】")
                 st.code(err, language="bash")
+
+        # >>> PROGRESS PATCH
+        _p(40, "config.json を読み込み中…")
+        # <<< PROGRESS PATCH
     else:
         # 既存config.json を採用
         config_json_in = run_dir / "config.json"
         config_json_in.write_bytes(hall_file.getvalue())
+
+        # >>> PROGRESS PATCH
+        _p(50, "パラメータを反映中…")
+        # <<< PROGRESS PATCH
+        
+
 
     # config.json を開いて min_aisle_mm / front_clear_mm を上書き
     try:
@@ -241,6 +272,10 @@ if run_btn:
 
     _write_json(cfg_path, cfg)
 
+    # >>> PROGRESS PATCH
+    _p(70, "最適化の準備中…")
+    # <<< PROGRESS PATCH
+
     # 注意喚起（単位倍率）
     # SCALE_NOTE = ""
     # try:
@@ -253,9 +288,20 @@ if run_btn:
 
     # 最適化の実行
     st.write("### 最適化を実行中…")
+    
+    # >>> PROGRESS PATCH
+    _p(80, "最適化を実行中…")
+    # <<< PROGRESS PATCH
+    
     rc2, out2, err2 = _run_py(run_dir / "layout_optimizer.py", run_dir)
     status_line = _parse_status(out2 + "\n" + err2)
     st.write(f"**status**: {status_line}")
+    
+    # >>> PROGRESS PATCH
+    _p(100, "完了")
+    # 進捗バーを消したい場合は：
+    # pbar.empty()
+    # <<< PROGRESS PATCH
 
     if rc2 != 0:
         st.error("最適化スクリプトがエラーで終了しました。ログを確認してください。")
