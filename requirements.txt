@@ -2,4 +2,3 @@ streamlit
 svgwrite
 ortools
 protobuf>=5.26,<6
-base64
