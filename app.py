@@ -10,6 +10,16 @@ import tempfile, shutil, subprocess, datetime, json, re, io, os
 
 APP_DIR = Path(__file__).parent.resolve()
 
+# 進捗ラベル用の小さなCSSスピナー
+st.markdown("""
+<style>
+.pb-label{display:flex;align-items:center;gap:8px;color:#cfe6ff;font-size:13px;margin:6px 0;}
+.pb-spin{width:14px;height:14px;border:2px solid #6ae3ff;border-right-color:transparent;border-radius:50%;
+         display:inline-block;animation:pb-rot .8s linear infinite;}
+@keyframes pb-rot{to{transform:rotate(360deg)}}
+</style>
+""", unsafe_allow_html=True)
+
 st.markdown("""
 <style>
 .main .block-container { max-width: 960px; margin: 0 auto; }
@@ -84,6 +94,10 @@ with st.expander("高度な設定", expanded=False):
     }
 # ─────────────────────────────────────────────────────────────
 
+# 最初は非表示：押されたら中身を入れる
+pb_label_ph = st.empty()
+pb_bar_ph   = st.empty()
+
 run_btn = st.button("▶ 実行", type="primary", use_container_width=True)
 
 # >>> PROGRESS PATCH: 初期化（実行直前で）
@@ -132,6 +146,17 @@ def _parse_status(text: str) -> str:
     return "status: (未取得)"
 
 if run_btn:
+    pb_label_ph.markdown("<div class='pb-label'><span class='pb-spin'></span> 準備中…</div>", unsafe_allow_html=True)
+    pbar = pb_bar_ph.progress(0, text="準備中…")
+
+    def _p(v:int, msg:str):
+        # バーとラベル両方を更新
+        try:
+            pbar.progress(v, text=msg)
+            pb_label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
+        except Exception:
+            pass
+        
     if not booths_file or not hall_file:
         st.error("booths.csv と 会場レイアウト（SVG または config.json）の両方を指定してください。")
         st.stop()
