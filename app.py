@@ -149,45 +149,47 @@ run_btn = st.button("▶ 実行", type="primary", use_container_width=True)
 #         pass
 # # <<< PROGRESS PATCH
 
-# CSSはそのままでOK（pb-label / pb-spin 定義済を前提）
+# CSS はそのままでOK（.pb-spin / .pb-label 定義済み前提）
+
 class ProgressUI:
     def __init__(self):
-        # 3分割: [アイコン] [テキスト] [バー]
-        self.wrap_ph = st.container()         # まとまり（任意）
-        cols = self.wrap_ph.columns([0.05, 0.95])  # アイコン/テキストの横並び
-        self.icon_ph = cols[0].empty()
-        self.text_ph = cols[1].empty()
-        self.bar_ph  = st.empty()
-        self.pbar = None
+        # ここだけに全部描く（※これが肝）
+        self.block = st.empty()
+        self.bar = None
         self.active = False
 
     def start(self, msg="準備中…"):
-        self.icon_ph.markdown("<span class='pb-spin'></span>", unsafe_allow_html=True)
-        self.text_ph.markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
-        self.pbar = self.bar_ph.progress(0, text=msg)
+        with self.block.container():
+            st.markdown(
+                f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>",
+                unsafe_allow_html=True,
+            )
+            self.bar = st.progress(0, text=msg)
         self.active = True
 
-    def update(self, v:int, msg:str):
+    def update(self, v: int, msg: str):
         if not self.active:
             self.start(msg)
-        self.pbar.progress(v, text=msg)
-        self.text_ph.markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
+        # blockごと再描画（古い内容を上書き）
+        with self.block.container():
+            st.markdown(
+                f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>",
+                unsafe_allow_html=True,
+            )
+            self.bar.progress(v, text=msg)
 
     def finish(self, msg="完了", hide_bar=False):
-        if self.active and self.pbar is not None:
-            self.pbar.progress(100, text=msg)
-
-        # 1) 親コンテナを一度まっさらにする（スピナーDOMを確実に消す）
-        self.wrap.empty()
-
-        # 2) 同じ位置に“スピナー無し”で描き直す
-        wrap2 = st.container()
-        cols2 = wrap2.columns([0.05, 0.95])
-        # 左（アイコン側）は何も描かない＝スピナー無し
-        cols2[1].markdown(f"<div class='pb-label' style='margin:0'>{msg}</div>", unsafe_allow_html=True)
-        if not hide_bar:
-            st.progress(100, text=msg)  # バーは100%のまま表示。消したい場合はコメントアウト
-
+        if self.active and self.bar is not None:
+            # いったんブロックを完全クリア
+            self.block.empty()
+            # 同じ場所に “スピナー無し” で描き直し
+            with self.block.container():
+                st.markdown(
+                    f"<div class='pb-label'>{msg}</div>",  # ← スピナー無し
+                    unsafe_allow_html=True,
+                )
+                if not hide_bar:
+                    st.progress(100, text=msg)
         self.active = False
 
 log_box = st.empty()
