@@ -5,9 +5,11 @@
 #   3) streamlit run app.py
 
 import streamlit as st
+import streamlit.components.v1 as components
 from pathlib import Path
 import tempfile, shutil, subprocess, datetime, json, re, io, os
 from pathlib import Path
+import base64
 
 APP_DIR = Path(__file__).parent  # app.py があるフォルダ
 icon_path = APP_DIR / "favicon.ico"  # 例: repo内 static/favicon.png
