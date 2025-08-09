@@ -38,11 +38,11 @@ def pb_start(msg="準備中…"):
 
     # ★ 横並びの1行（左: スピナー / 右: ラベル）
     #   P に progress_zone を持っている場合はその中で columns を作る
-    row_cols = (P.get("zone").columns([0.08, 0.92])     # zone がある場合
-                if P.get("zone") else st.columns([0.08, 0.92]))  # 無い場合のフォールバック
+    row_cols = (P.get("zone").columns([0.05, 0.95])     # zone がある場合
+                if P.get("zone") else st.columns([0.05, 0.95]))  # 無い場合のフォールバック
 
-    P["spin_ph"] = row_cols[0].empty()
-    P["text_ph"] = row_cols[1].empty()
+    P["text_ph"] = row_cols[0].empty()
+    P["spin_ph"] = row_cols[1].empty()
 
     # スピナーとラベルを横並びで描画
     P["spin_ph"].markdown("<span class='pb-spin'></span>", unsafe_allow_html=True)
@@ -117,6 +117,14 @@ with st.expander("高度な設定", expanded=False):
         outlet_distance = st.number_input("コンセント接近度合い", 0.0, 1_000_000.0, 1.0, step=0.1, help="大きいほど希望者をコンセント近くへ配置します。[outlet_distance]")
         outlet_repel_non_wanter = st.number_input("非希望者のコンセント距離", 0.0, 1_000_000.0, 0.0, step=0.1, help="大きいほどコンセント不要ブースがコンセント付近を占有しないようにします。[outlet_repel_non_wanter]")
         preferred_area_bonus = st.number_input("希望エリア配置度合い", 0.0, 1_000_000.0, 1000.0, step=10.0, help="大きいほどブースを希望エリア内に配置しやすくなります。[preferred_area_bonus]")
+        
+    st.subheader("ソルバー")
+    max_time_s = st.number_input(
+        "最大計算時間 [秒]",
+        min_value=1, max_value=3600, value=30, step=5,
+        help="OR-Tools CP-SAT の最大実行時間。時間内で最良解を返します。"
+    )
+    solver_ui = {"max_time_in_seconds": float(max_time_s)}
 
     # 実行時に使う辞書（グローバルにせず、この下の if run_btn: で参照）
     req_ui = {
@@ -313,6 +321,12 @@ if run_btn:
     # >>> PATCH(2): UI の requirements / weights を反映（あれば）
     #   ※ req_ui / weights_ui は Inputs 側の expander で作った辞書を想定
     #   ※ もし別スコープなら st.session_state["req_ui"] 等から拾ってください
+    
+    # solver パラメータの反映
+    cfg.setdefault("solver", {})
+    if "solver_ui" in locals() and isinstance(solver_ui, dict):
+        cfg["solver"].update(solver_ui)
+    
     try:
         if "req_ui" in locals() and isinstance(req_ui, dict):
             cfg.setdefault("requirements", {}).update(req_ui)
@@ -358,7 +372,7 @@ if run_btn:
     # _p(80, "最適化を実行中…")
     # <<< PROGRESS PATCH
     
-    pb_update(70, "最適化中…")
+    pb_update(70, f"最適化を実行中…（最大 {int(max_time_s)} 秒）")
     
     rc2, out2, err2 = _run_py(run_dir / "layout_optimizer.py", run_dir)
     status_line = _parse_status(out2 + "\n" + err2)
