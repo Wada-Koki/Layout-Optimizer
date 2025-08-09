@@ -20,41 +20,57 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-class ProgressUI:
-    def __init__(self):
-        self.label_ph = st.empty()
-        self.bar_ph = st.empty()
-        self.pbar = None
-    def start(self, msg="準備中…"):
-        self.label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
-        self.pbar = self.bar_ph.progress(0, text=msg)
-    def update(self, v:int, msg:str):
-        if self.pbar is None:
-            self.start(msg)
-        self.pbar.progress(v, text=msg)
-        self.label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
-    def finish(self, msg="完了", hide_bar=False):
-        if self.pbar is not None:
-            self.pbar.progress(100, text=msg)
-        # スピナーだけ消す（ラベルは残す）
-        self.label_ph.markdown(f"<div class='pb-label'>{msg}</div>", unsafe_allow_html=True)
-        if hide_bar:
-            self.bar_ph.empty()   # バー自体も消したい時は True に
-
 st.markdown("""
 <style>
 .main .block-container { max-width: 960px; margin: 0 auto; }
 </style>
 """, unsafe_allow_html=True)
 
+# 進捗の状態をセッションで管理
+if "pb_active" not in st.session_state:
+    st.session_state.pb_active = False
+    st.session_state.pb_label_ph = st.empty()
+    st.session_state.pb_bar_ph   = st.empty()  # ここにprogressを作る
+    
+def pb_start(msg="準備中…"):
+    # 既存バーがあれば消す（これで“2本目”の残留を防止）
+    if st.session_state.pb_active:
+        st.session_state.pb_label_ph.empty()
+        st.session_state.pb_bar_ph.empty()
+        st.session_state.pb_active = False
+
+    st.session_state.pb_label_ph.markdown(
+        f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True
+    )
+    # 重要：同じ key を使って“再利用”する（重複生成を防ぐ）
+    st.session_state.pb = st.session_state.pb_bar_ph.progress(0, text=msg, key="main_progress")
+    st.session_state.pb_active = True
+
+def pb_update(v:int, msg:str):
+    if not st.session_state.pb_active:
+        pb_start(msg)
+    st.session_state.pb.progress(v, text=msg)
+    st.session_state.pb_label_ph.markdown(
+        f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True
+    )
+
+def pb_finish(msg="完了", hide_bar=False):
+    if st.session_state.pb_active:
+        st.session_state.pb.progress(100, text=msg)
+        # スピナーだけ消す（ラベルは残す）
+        st.session_state.pb_label_ph.markdown(f"<div class='pb-label'>{msg}</div>", unsafe_allow_html=True)
+        if hide_bar:
+            st.session_state.pb_bar_ph.empty()
+        st.session_state.pb_active = False
+
 st.markdown("<h1 style='text-align:center;'><span>展示レイアウト</span><span>最適化</span></h1>", unsafe_allow_html=True)
 
 # ---- ファイル入力 ----
 col1, col2 = st.columns(2)
 with col1:
-    booths_file = st.file_uploader("展示希望(CSV)を選択", type=["csv"])
+    booths_file = st.file_uploader("展示希望を選択 (CSV)", type=["csv"])
 with col2:
-    hall_file   = st.file_uploader("会場レイアウト（SVG または JSON）を選択", type=["svg","json"])
+    hall_file   = st.file_uploader("会場レイアウトを選択 (SVG または JSON)", type=["svg","json"])
 
 col1, col2 = st.columns(2)
 with col1:
@@ -129,6 +145,27 @@ def _p(v, msg=""):
     except Exception:
         pass
 # <<< PROGRESS PATCH
+
+class ProgressUI:
+    def __init__(self):
+        self.label_ph = st.empty()
+        self.bar_ph = st.empty()
+        self.pbar = None
+    def start(self, msg="準備中…"):
+        self.label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
+        self.pbar = self.bar_ph.progress(0, text=msg)
+    def update(self, v:int, msg:str):
+        if self.pbar is None:
+            self.start(msg)
+        self.pbar.progress(v, text=msg)
+        self.label_ph.markdown(f"<div class='pb-label'><span class='pb-spin'></span> {msg}</div>", unsafe_allow_html=True)
+    def finish(self, msg="完了", hide_bar=False):
+        if self.pbar is not None:
+            self.pbar.progress(100, text=msg)
+        # スピナーだけ消す（ラベルは残す）
+        self.label_ph.markdown(f"<div class='pb-label'>{msg}</div>", unsafe_allow_html=True)
+        if hide_bar:
+            self.bar_ph.empty()   # バー自体も消したい時は True に
 
 log_box = st.empty()
 
